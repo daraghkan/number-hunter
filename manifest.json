@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Amaysim Number Hunter",
+  "version": "2.1.0",
+  "description": "Find memorable phone numbers on amaysim.com.au",
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://api.amaysim.com.au/*",
+    "https://www.amaysim.com.au/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
