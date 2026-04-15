@@ -56,6 +56,7 @@
 
     .pattern-scans { margin-bottom: 12px; }
     .pattern-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .pattern-grid .preset-btn.full-width { grid-column: 1 / -1; }
 
     /* Progress */
     .progress { display: none; margin: 12px 0; }
@@ -77,8 +78,12 @@
 
     .number-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .tag { font-size: 9px; padding: 2px 6px; background: rgba(255,140,0,0.12); color: #ff8c00; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag.quint { background: rgba(255,215,0,0.3); color: #ffd700; }
     .tag.quad { background: rgba(255,140,0,0.25); }
     .tag.triple { background: rgba(255,140,0,0.2); }
+    .tag.aaabbb { background: rgba(255,100,0,0.25); color: #ffb266; }
+    .tag.aabbccdd { background: rgba(138,99,255,0.3); color: #c4b5fd; }
+    .tag.aabbcc { background: rgba(138,99,255,0.22); color: #b8a6fa; }
     .tag.palindrome { background: rgba(138,99,255,0.2); color: #a78bfa; }
     .tag.sequence { background: rgba(76,175,80,0.2); color: #4caf50; }
     .tag.round { background: rgba(33,150,243,0.2); color: #64b5f6; }
@@ -147,10 +152,11 @@
 
     <div class="section-label">Pattern Scans</div>
     <div class="pattern-grid">
-      <button class="preset-btn" id="scanTriples"><span class="label">Triples</span><span class="desc">000-999 + quads</span></button>
-      <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">Every AABB combo</span></button>
+      <button class="preset-btn" id="scanTriples"><span class="label">Triples</span><span class="desc">AAA, AAAA, AAAAA</span></button>
+      <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">AABB, AABBCC, AABBCCDD</span></button>
+      <button class="preset-btn" id="scanTripleTriples"><span class="label">AAABBB</span><span class="desc">Triple + triple pairs</span></button>
       <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>
-      <button class="preset-btn" id="scanAll"><span class="label">Full Scan</span><span class="desc">Triples + AABB + sequences</span></button>
+      <button class="preset-btn full-width" id="scanAll"><span class="label">Full Scan</span><span class="desc">All patterns above</span></button>
     </div>
 
     <div class="progress" id="scanProgress">

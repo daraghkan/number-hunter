@@ -106,17 +106,49 @@
     });
   }
 
+  // --- Pattern detection helpers ---
+  // AABBCCDD: 4 consecutive pairs with 4 distinct digits (e.g. 11223344)
+  function hasAABBCCDD(d) {
+    const m = d.match(/(\d)\1(\d)\2(\d)\3(\d)\4/);
+    return !!m && new Set([m[1], m[2], m[3], m[4]]).size === 4;
+  }
+  // AABBCC: 3 consecutive pairs with 3 distinct digits (e.g. 112233)
+  function hasAABBCC(d) {
+    const m = d.match(/(\d)\1(\d)\2(\d)\3/);
+    return !!m && m[1] !== m[2] && m[2] !== m[3] && m[1] !== m[3];
+  }
+  // AAABBB: two triples of different digits (e.g. 111222)
+  function hasAAABBB(d) {
+    const m = d.match(/(\d)\1\1(\d)\2\2/);
+    return !!m && m[1] !== m[2];
+  }
+  // AABB: a pair followed by a different pair (e.g. 1122)
+  function hasAABB(d) {
+    const m = d.match(/(\d)\1(\d)\2/);
+    return !!m && m[1] !== m[2];
+  }
+
   // --- Classify a number into tags ---
   function getNumberTags(num) {
     const tags = [];
     const d = num.slice(2); // 8 digits after "04"
 
-    // Quad (4+ repeated digits anywhere)
-    if (/(\d)\1{3,}/.test(d)) {
+    // Repeating-digit runs (priority: Quint > Quad > Triple)
+    if (/(\d)\1{4}/.test(d)) {
+      tags.push({ label: 'Quint', cls: 'quint' });
+    } else if (/(\d)\1{3}/.test(d)) {
       tags.push({ label: 'Quad', cls: 'quad' });
     } else if (/(\d)\1{2}/.test(d)) {
-      // Triple (3 repeated digits, only if not already a quad)
       tags.push({ label: 'Triple', cls: 'triple' });
+    }
+
+    // Grouped pair patterns (priority: AABBCCDD > AABBCC > AAABBB > AABB)
+    if (hasAABBCCDD(d)) {
+      tags.push({ label: 'AABBCCDD', cls: 'aabbccdd' });
+    } else if (hasAABBCC(d)) {
+      tags.push({ label: 'AABBCC', cls: 'aabbcc' });
+    } else if (hasAAABBB(d)) {
+      tags.push({ label: 'AAABBB', cls: 'aaabbb' });
     }
 
     // Sequence (3+ ascending or descending consecutive digits)
@@ -135,15 +167,15 @@
       tags.push({ label: 'Palindrome', cls: 'palindrome' });
     }
 
-    // Round ending (only if not already tagged as Quad/Triple which imply 000/0000)
-    const hasQuadOrTriple = tags.some(t => t.cls === 'quad' || t.cls === 'triple');
-    if (!hasQuadOrTriple && (d.endsWith('0000') || d.endsWith('000') || d.endsWith('500'))) {
+    // Round ending (only if nothing else already tags this)
+    const hasRepeat = tags.some(t => ['quint','quad','triple'].includes(t.cls));
+    if (!hasRepeat && (d.endsWith('0000') || d.endsWith('000') || d.endsWith('500'))) {
       tags.push({ label: 'Round', cls: 'round' });
     }
 
-    // AABB (double-double pattern, only if not a quad)
-    const hasQuad = tags.some(t => t.cls === 'quad');
-    if (!hasQuad && /(\d)\1(\d)\2/.test(d)) {
+    // AABB (fallback if no larger grouped pattern matched)
+    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','quint','quad'].includes(t.cls));
+    if (!hasGrouped && hasAABB(d)) {
       tags.push({ label: 'AABB', cls: 'aabb' });
     }
 
@@ -559,15 +591,30 @@
   stopScanBtn.addEventListener('click', () => { stopRequested = true; });
 
   // --- Scan presets ---
+  // Triples scan: AAA (3x), AAAA (4x), AAAAA (5x) for each digit 0-9
   $('scanTriples').addEventListener('click', () => {
     const pats = [];
-    for (let d = 0; d <= 9; d++) { pats.push(`${d}${d}${d}`); pats.push(`${d}${d}${d}${d}`); }
+    for (let d = 0; d <= 9; d++) {
+      pats.push(`${d}${d}${d}`);
+      pats.push(`${d}${d}${d}${d}`);
+      pats.push(`${d}${d}${d}${d}${d}`);
+    }
     runBulkScan(pats);
   });
 
+  // All Doubles scan: AABB for each distinct digit pair (post-filter tags mark AABBCC / AABBCCDD)
   $('scanDoubleDoubles').addEventListener('click', () => {
     const pats = [];
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
+    runBulkScan(pats);
+  });
+
+  // AAABBB scan: search 5-char prefix AAABB for each distinct digit pair.
+  // The API caps filters at 5 chars, so AAABB catches everything that could become AAABBB;
+  // the AAABBB tag highlights the true matches in the Results tab.
+  $('scanTripleTriples').addEventListener('click', () => {
+    const pats = [];
+    for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
     runBulkScan(pats);
   });
 
@@ -599,8 +646,17 @@
 
   $('scanAll').addEventListener('click', () => {
     const pats = [];
-    for (let d = 0; d <= 9; d++) { pats.push(`${d}${d}${d}`); pats.push(`${d}${d}${d}${d}`); }
+    // Triples + quads + quints
+    for (let d = 0; d <= 9; d++) {
+      pats.push(`${d}${d}${d}`);
+      pats.push(`${d}${d}${d}${d}`);
+      pats.push(`${d}${d}${d}${d}${d}`);
+    }
+    // AABB pairs
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
+    // AAABBB prefixes (5-char AAABB)
+    for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
+    // Sequences
     pats.push(...sequencePatterns());
     runBulkScan([...new Set(pats)]);
   });
