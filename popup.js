@@ -106,6 +106,63 @@
     });
   }
 
+  // --- Classify a number into tags ---
+  function getNumberTags(num) {
+    const tags = [];
+    const d = num.slice(2); // 8 digits after "04"
+
+    // Quad (4+ repeated digits anywhere)
+    if (/(\d)\1{3,}/.test(d)) {
+      tags.push({ label: 'Quad', cls: 'quad' });
+    } else if (/(\d)\1{2}/.test(d)) {
+      // Triple (3 repeated digits, only if not already a quad)
+      tags.push({ label: 'Triple', cls: 'triple' });
+    }
+
+    // Sequence (3+ ascending or descending consecutive digits)
+    for (let i = 0; i < d.length - 2; i++) {
+      if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) {
+        tags.push({ label: 'Sequence', cls: 'sequence' }); break;
+      }
+      if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) {
+        tags.push({ label: 'Sequence', cls: 'sequence' }); break;
+      }
+    }
+
+    // Palindrome (last 4 digits mirror)
+    const l4 = d.slice(-4);
+    if (l4 === l4.split('').reverse().join('')) {
+      tags.push({ label: 'Palindrome', cls: 'palindrome' });
+    }
+
+    // Round ending (only if not already tagged as Quad/Triple which imply 000/0000)
+    const hasQuadOrTriple = tags.some(t => t.cls === 'quad' || t.cls === 'triple');
+    if (!hasQuadOrTriple && (d.endsWith('0000') || d.endsWith('000') || d.endsWith('500'))) {
+      tags.push({ label: 'Round', cls: 'round' });
+    }
+
+    // AABB (double-double pattern, only if not a quad)
+    const hasQuad = tags.some(t => t.cls === 'quad');
+    if (!hasQuad && /(\d)\1(\d)\2/.test(d)) {
+      tags.push({ label: 'AABB', cls: 'aabb' });
+    }
+
+    // Pair fallback (only if nothing else classified it)
+    if (tags.length === 0) {
+      const pairs = d.match(/(\d)\1/g);
+      if (pairs && pairs.length > 0) {
+        tags.push({ label: pairs.length > 1 ? 'Pairs' : 'Pair', cls: 'pair' });
+      }
+    }
+
+    return tags.slice(0, 2);
+  }
+
+  function tagsHtml(tags) {
+    if (!tags || tags.length === 0) return '';
+    return `<div class="tags">${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}</div>`;
+  }
+
   // --- Scoring ---
   function scoreNumber(num) {
     let score = 0;
@@ -358,6 +415,7 @@
       <div class="number-card">
         <div>
           <div class="num">${r.formatted}</div>
+          ${tagsHtml(getNumberTags(r.number))}
         </div>
         <div class="meta">
           <div class="score">score ${r.score}</div>
@@ -373,6 +431,7 @@
       return;
     }
     const scored = numbers.map(n => ({
+      raw: n.number,
       formatted: formatNum(n.number),
       isPremium: n.isPremium,
       score: scoreNumber(n.number)
@@ -380,7 +439,10 @@
 
     searchResults.innerHTML = scored.map(r => `
       <div class="number-card">
-        <div><div class="num">${r.formatted}</div></div>
+        <div>
+          <div class="num">${r.formatted}</div>
+          ${tagsHtml(getNumberTags(r.raw))}
+        </div>
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
@@ -432,16 +494,9 @@
     if (e.key === 'Enter') searchBtn.click();
   });
 
-  // --- Presets ---
+  // --- Presets (single-pattern search shortcuts) ---
   document.querySelectorAll('.preset-btn[data-filter]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (btn.dataset.type === 'doubles') {
-        // Run AABB scan for a quick sample
-        const pats = [];
-        for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
-        await runBulkScan(pats);
-        return;
-      }
+    btn.addEventListener('click', () => {
       const filter = btn.dataset.filter;
       searchInput.value = filter;
       convertedHint.style.display = 'none';
@@ -566,8 +621,11 @@
       list.innerHTML = historyLog.map(r => {
         const date = new Date(r.foundAt).toLocaleDateString();
         const time = new Date(r.foundAt).toLocaleTimeString();
-        return `<div style="display:flex; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #1a1a1a;">
+        const tags = getNumberTags(r.number);
+        const tagText = tags.length ? tags.map(t => t.label).join(' · ') : '';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid #1a1a1a;">
           <span style="color:#fff; font-weight:600;">${r.formatted}</span>
+          <span style="color:#ff8c00; font-size:10px;">${tagText}</span>
           <span style="color:${r.isPremium ? '#ff8c00' : '#4caf50'}; font-size:11px;">${r.isPremium ? '$30' : 'FREE'}</span>
           <span style="color:#ff8c00; font-size:11px;">score ${r.score}</span>
           <span style="color:#555; font-size:10px;">${date} ${time}</span>
