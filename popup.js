@@ -1,5 +1,5 @@
 // =============================================
-// Amaysim Number Hunter - v2.0
+// Amaysim Number Hunter - v3.0
 // Self-contained: creates own session, no tab needed
 // =============================================
 
@@ -20,6 +20,25 @@
   const STORE_ID = 'website';
   const CHANNEL = 'online';
 
+  // --- T9 keypad mapping ---
+  const LETTER_TO_DIGIT = {
+    a: '2', b: '2', c: '2',
+    d: '3', e: '3', f: '3',
+    g: '4', h: '4', i: '4',
+    j: '5', k: '5', l: '5',
+    m: '6', n: '6', o: '6',
+    p: '7', q: '7', r: '7', s: '7',
+    t: '8', u: '8', v: '8',
+    w: '9', x: '9', y: '9', z: '9'
+  };
+
+  function wordToDigits(input) {
+    return input.toLowerCase().split('').map(ch => {
+      if (/\d/.test(ch)) return ch;
+      return LETTER_TO_DIGIT[ch] || '';
+    }).join('');
+  }
+
   // --- DOM refs ---
   const $ = id => document.getElementById(id);
   const statusDot = $('statusDot');
@@ -28,6 +47,8 @@
   const searchInput = $('searchInput');
   const searchBtn = $('searchBtn');
   const searchResults = $('searchResults');
+  const convertedHint = $('convertedHint');
+  const connectBox = $('connectBox');
   const scanProgress = $('scanProgress');
   const progressFill = $('progressFill');
   const progressText = $('progressText');
@@ -55,6 +76,20 @@
       currentFilter = btn.dataset.filter;
       renderResults();
     });
+  });
+
+  // --- Show live conversion hint as user types ---
+  searchInput.addEventListener('input', () => {
+    const raw = searchInput.value.trim();
+    if (!raw) { convertedHint.style.display = 'none'; return; }
+    const hasLetters = /[a-zA-Z]/.test(raw);
+    if (hasLetters) {
+      const digits = wordToDigits(raw);
+      convertedHint.textContent = `"${raw.toUpperCase()}" → ${digits}`;
+      convertedHint.style.display = 'block';
+    } else {
+      convertedHint.style.display = 'none';
+    }
   });
 
   // --- API via background script ---
@@ -87,7 +122,6 @@
     if (l4 === l4.split('').reverse().join('')) score += 12;
     if (d.endsWith('000')) score += 15;
     if (d.endsWith('0000')) score += 30;
-    if (d.includes('327244') || d.includes('32724')) score += 25;
     return score;
   }
 
@@ -158,22 +192,18 @@
     if (plan?.id) {
       planId = plan.id;
       await chrome.storage.local.set({ sessionId: sid, planId });
-      $('sessionId').textContent = sid;
-      $('planId').textContent = planId;
       setStatus('green', 'Ready');
       planInfo.textContent = plan.name || 'Plan loaded';
+      connectBox.classList.add('hidden');
       return true;
     }
     return false;
   }
 
-  function showConnectTab() {
+  function showConnectBox() {
     setStatus('yellow', 'Need connection');
     planInfo.textContent = 'Open amaysim cart page';
-    tabs.forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-tab="settings"]').classList.add('active');
-    $('panel-settings').classList.add('active');
+    connectBox.classList.remove('hidden');
   }
 
   // --- Initialize ---
@@ -215,7 +245,7 @@
     }
 
     // 3. Fall back to manual connect
-    showConnectTab();
+    showConnectBox();
   }
 
   function setStatus(color, text) {
@@ -232,7 +262,6 @@
     }
     sessionId = sid;
     await chrome.storage.local.set({ sessionId: sid });
-    $('sessionId').textContent = sid;
     setStatus('yellow', 'Checking cart...');
 
     try {
@@ -241,15 +270,9 @@
       if (plan?.id) {
         planId = plan.id;
         await chrome.storage.local.set({ planId });
-        $('planId').textContent = planId;
         setStatus('green', 'Ready');
         planInfo.textContent = plan.name || 'Plan loaded';
-        $('connectBox').style.borderColor = '#4caf50';
-        // Switch to search tab
-        tabs.forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.querySelector('[data-tab="search"]').classList.add('active');
-        $('panel-search').classList.add('active');
+        connectBox.classList.add('hidden');
       } else {
         setStatus('yellow', 'Connected');
         planInfo.textContent = 'No plan in cart - add one on amaysim.com.au';
@@ -366,28 +389,43 @@
     `).join('');
   }
 
-  // --- Search ---
+  // --- Search (supports numbers and words) ---
   searchBtn.addEventListener('click', async () => {
-    const filter = searchInput.value.trim();
-    if (!filter || !/^\d{1,5}$/.test(filter)) {
-      searchResults.innerHTML = '<div class="results-empty" style="padding:15px;color:#f44336">Enter 1-5 digits.</div>';
+    const raw = searchInput.value.trim();
+    if (!raw) {
+      searchResults.innerHTML = '<div class="results-empty" style="padding:15px;color:#f44336">Enter digits or a word to search.</div>';
       return;
     }
     if (!planId) {
       searchResults.innerHTML = '<div class="results-empty" style="padding:15px;color:#f44336">Not ready. Wait for connection.</div>';
       return;
     }
-    searchBtn.disabled = true;
-    searchBtn.textContent = '...';
-    try {
-      const nums = await queryNumbers(filter);
-      addResults(nums);
-      renderSearchResults(nums);
-    } catch (e) {
-      searchResults.innerHTML = `<div class="results-empty" style="padding:15px;color:#f44336">${e.message}</div>`;
+
+    // Convert letters to digits
+    const digits = wordToDigits(raw);
+
+    if (!digits || !/^\d+$/.test(digits)) {
+      searchResults.innerHTML = '<div class="results-empty" style="padding:15px;color:#f44336">Could not convert input to digits.</div>';
+      return;
     }
-    searchBtn.disabled = false;
-    searchBtn.textContent = 'Search';
+
+    // If 1-5 digits, do a single search. If longer, do a multi-pattern scan.
+    if (digits.length <= 5) {
+      searchBtn.disabled = true;
+      searchBtn.textContent = '...';
+      try {
+        const nums = await queryNumbers(digits);
+        addResults(nums);
+        renderSearchResults(nums);
+      } catch (e) {
+        searchResults.innerHTML = `<div class="results-empty" style="padding:15px;color:#f44336">${e.message}</div>`;
+      }
+      searchBtn.disabled = false;
+      searchBtn.textContent = 'Search';
+    } else {
+      // Longer input: generate sub-patterns and bulk scan
+      await runBulkScan(generateSubPatterns(digits));
+    }
   });
 
   searchInput.addEventListener('keydown', e => {
@@ -395,15 +433,19 @@
   });
 
   // --- Presets ---
-  document.querySelectorAll('.preset-btn').forEach(btn => {
+  document.querySelectorAll('.preset-btn[data-filter]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const filter = btn.dataset.filter;
-      if (filter.length <= 5) {
-        searchInput.value = filter;
-        searchBtn.click();
-      } else {
-        await runBulkScan(generateSubPatterns(filter));
+      if (btn.dataset.type === 'doubles') {
+        // Run AABB scan for a quick sample
+        const pats = [];
+        for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
+        await runBulkScan(pats);
+        return;
       }
+      const filter = btn.dataset.filter;
+      searchInput.value = filter;
+      convertedHint.style.display = 'none';
+      searchBtn.click();
     });
   });
 
@@ -427,7 +469,7 @@
 
     scanProgress.classList.add('active');
     stopScanBtn.style.display = 'block';
-    document.querySelectorAll('.scan-btn:not(#stopScan)').forEach(b => b.disabled = true);
+    document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = true);
 
     let scanned = 0;
     let found = 0;
@@ -449,7 +491,7 @@
 
     scanning = false;
     stopScanBtn.style.display = 'none';
-    document.querySelectorAll('.scan-btn:not(#stopScan)').forEach(b => b.disabled = false);
+    document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = false);
     progressText.textContent = `Done! ${found} new numbers across ${scanned} patterns.`;
 
     tabs.forEach(t => t.classList.remove('active'));
@@ -484,7 +526,7 @@
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
     pats.push('1234','2345','3456','4567','5678','6789','9876','8765','7654','6543','5432','4321','2468','1357','8642','7531');
     for (let d = 1; d <= 9; d++) pats.push(`${d}00`);
-    pats.push('1000','2000','3000','5000','8000','32724','27244','72440','327','272','244');
+    pats.push('1000','2000','3000','5000','8000');
     runBulkScan([...new Set(pats)]);
   });
 
