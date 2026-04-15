@@ -25,6 +25,10 @@
     .panel { display: none; padding: 16px; max-height: 400px; overflow-y: auto; }
     .panel.active { display: block; }
 
+    /* Connect box */
+    .connect-box { padding: 10px; background: #1a1200; border: 1px solid #ff8c00; border-radius: 6px; font-size: 11px; margin-bottom: 12px; }
+    .connect-box.hidden { display: none; }
+
     /* Quick Search */
     .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
     .search-row input { flex: 1; padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; outline: none; }
@@ -33,7 +37,11 @@
     .search-row button:hover { background: #ff6600; }
     .search-row button:disabled { background: #555; cursor: not-allowed; }
 
+    .input-hint { font-size: 10px; color: #666; margin-top: -8px; margin-bottom: 10px; }
+    .converted-hint { font-size: 11px; color: #ff8c00; margin-top: -8px; margin-bottom: 10px; display: none; }
+
     /* Presets */
+    .section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
     .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .preset-btn { padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #ccc; font-size: 11px; cursor: pointer; text-align: left; transition: all 0.15s; }
     .preset-btn:hover { border-color: #ff8c00; color: #ff8c00; }
@@ -41,12 +49,13 @@
     .preset-btn .desc { font-size: 10px; color: #666; }
 
     /* Scan Controls */
-    .scan-section { margin-bottom: 16px; }
-    .scan-section h3 { font-size: 13px; margin-bottom: 8px; color: #ff8c00; }
     .scan-btn { width: 100%; padding: 10px; background: linear-gradient(135deg, #ff8c00, #ff6600); color: #fff; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; margin-bottom: 6px; }
     .scan-btn:hover { filter: brightness(1.1); }
     .scan-btn:disabled { background: #333; filter: none; cursor: not-allowed; }
     .scan-btn.secondary { background: #1a1a1a; border: 1px solid #ff8c00; color: #ff8c00; }
+
+    .pattern-scans { margin-bottom: 12px; }
+    .pattern-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
     /* Progress */
     .progress { display: none; margin: 12px 0; }
@@ -71,9 +80,11 @@
     .filter-btn { padding: 4px 10px; font-size: 11px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #888; cursor: pointer; }
     .filter-btn.active { border-color: #ff8c00; color: #ff8c00; }
 
-    /* Session */
-    .session-info { padding: 10px; background: #1a1a1a; border-radius: 6px; font-size: 11px; margin-bottom: 10px; }
-    .session-info code { color: #ff8c00; font-size: 10px; word-break: break-all; }
+    /* Results actions */
+    .results-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid #222; }
+    .results-stats { font-size: 11px; color: #666; margin-bottom: 8px; }
+
+    /* Session refresh */
     .refresh-btn { width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #f44336; color: #f44336; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; margin-top: 8px; }
     .refresh-btn:hover { background: #f44336; color: #fff; }
 
@@ -95,40 +106,52 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="search">Search</button>
-    <button class="tab" data-tab="scan">Bulk Scan</button>
     <button class="tab" data-tab="results">Results</button>
-    <button class="tab" data-tab="settings">Session</button>
   </div>
 
   <!-- SEARCH TAB -->
   <div class="panel active" id="panel-search">
+    <!-- Connect box (shown when not connected) -->
+    <div class="connect-box hidden" id="connectBox">
+      <strong style="color:#ff8c00;">Connect to amaysim page:</strong><br>
+      <span style="color:#999;">Open the amaysim cart page, press F12, paste this in Console:</span>
+      <code style="display:block; margin:6px 0; padding:6px; background:#000; border-radius:4px; font-size:10px; user-select:all; cursor:text;">copy(sessionStorage.getItem('sessionId'))</code>
+      <span style="color:#999;">Then paste the session ID below:</span>
+      <div class="search-row" style="margin-top:6px; margin-bottom:0;">
+        <input type="text" id="manualSessionInput" placeholder="Paste session ID here" style="font-size:11px;">
+        <button id="connectBtn" style="padding:8px 12px; background:#ff8c00; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">Connect</button>
+      </div>
+    </div>
+
     <div class="search-row">
-      <input type="text" id="searchInput" placeholder="Enter 1-5 digits (e.g. 2222)" maxlength="5">
+      <input type="text" id="searchInput" placeholder="Numbers or word (e.g. 2222, COOL)">
       <button id="searchBtn">Search</button>
     </div>
+    <div class="converted-hint" id="convertedHint"></div>
+
+    <div class="section-label">Quick Presets</div>
     <div class="preset-grid">
       <button class="preset-btn" data-filter="0000"><span class="label">Quads</span><span class="desc">0000, 1111, etc.</span></button>
       <button class="preset-btn" data-filter="1234"><span class="label">Sequences</span><span class="desc">1234, 5678, etc.</span></button>
-      <button class="preset-btn" data-filter="327244" data-name="DARAGH"><span class="label">DARAGH</span><span class="desc">327244 on keypad</span></button>
       <button class="preset-btn" data-filter="000"><span class="label">Round endings</span><span class="desc">...000, ...500, etc.</span></button>
+      <button class="preset-btn" data-filter="0000" data-type="doubles"><span class="label">Double-Doubles</span><span class="desc">AABB patterns</span></button>
     </div>
-    <div id="searchResults"></div>
-  </div>
 
-  <!-- BULK SCAN TAB -->
-  <div class="panel" id="panel-scan">
-    <div class="scan-section">
-      <h3>Pattern Scans</h3>
-      <button class="scan-btn" id="scanTriples">Triples (000-999)</button>
-      <button class="scan-btn secondary" id="scanDoubleDoubles">Double-Doubles (AABB)</button>
-      <button class="scan-btn secondary" id="scanSequences">Sequences & Patterns</button>
-      <button class="scan-btn secondary" id="scanAll">Full Scan (130+ patterns)</button>
+    <div class="section-label">Pattern Scans</div>
+    <div class="pattern-grid">
+      <button class="preset-btn" id="scanTriples"><span class="label">Triples</span><span class="desc">000-999 + quads</span></button>
+      <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">Every AABB combo</span></button>
+      <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">All ordered runs</span></button>
+      <button class="preset-btn" id="scanAll"><span class="label">Full Scan</span><span class="desc">130+ patterns</span></button>
     </div>
+
     <div class="progress" id="scanProgress">
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       <div class="progress-text" id="progressText">Scanning...</div>
     </div>
     <button class="scan-btn" id="stopScan" style="display:none; background:#f44336;">Stop Scan</button>
+
+    <div id="searchResults"></div>
   </div>
 
   <!-- RESULTS TAB -->
@@ -142,37 +165,18 @@
     <div id="resultsList">
       <div class="results-empty">No results yet. Run a search or scan first.</div>
     </div>
-  </div>
 
-  <!-- SETTINGS TAB -->
-  <div class="panel" id="panel-settings">
-    <div class="session-info" id="connectBox" style="border:1px solid #ff8c00; background:#1a1200;">
-      <strong style="color:#ff8c00;">Connect to amaysim page:</strong><br>
-      <span style="font-size:11px; color:#999;">Open the amaysim cart page, press F12, paste this in Console:</span>
-      <code style="display:block; margin:6px 0; padding:6px; background:#000; border-radius:4px; font-size:10px; user-select:all; cursor:text;">copy(sessionStorage.getItem('sessionId'))</code>
-      <span style="font-size:11px; color:#999;">Then paste the session ID below:</span>
-      <div class="search-row" style="margin-top:6px; margin-bottom:0;">
-        <input type="text" id="manualSessionInput" placeholder="Paste session ID here" style="font-size:11px;">
-        <button id="connectBtn" style="padding:8px 12px; background:#ff8c00; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">Connect</button>
+    <div class="results-actions">
+      <div class="results-stats">
+        <strong>This session:</strong> <span id="totalFound">0</span> numbers |
+        <strong>All-time:</strong> <span id="totalLogged">0</span> across <span id="totalSessions">0</span> sessions
       </div>
+      <button class="scan-btn secondary" id="exportCSV">Export All Numbers (CSV)</button>
+      <button class="scan-btn secondary" id="exportJSON" style="margin-top:4px">Export as JSON</button>
+      <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
+      <button class="refresh-btn" id="refreshSession" style="margin-top:12px">New Session (Fresh Numbers)</button>
+      <button class="refresh-btn" id="clearHistory" style="margin-top:4px; border-color:#888; color:#888">Clear All History</button>
     </div>
-    <div class="session-info">
-      <strong>Session ID:</strong><br>
-      <code id="sessionId">-</code>
-    </div>
-    <div class="session-info">
-      <strong>Plan ID:</strong><br>
-      <code id="planId">-</code>
-    </div>
-    <div class="session-info">
-      <strong>Numbers found this session:</strong> <span id="totalFound">0</span><br>
-      <strong>All-time log:</strong> <span id="totalLogged">0</span> numbers across <span id="totalSessions">0</span> sessions
-    </div>
-    <button class="scan-btn" id="exportCSV">Export All Numbers (CSV)</button>
-    <button class="scan-btn secondary" id="exportJSON" style="margin-top:4px">Export as JSON</button>
-    <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
-    <button class="refresh-btn" id="refreshSession" style="margin-top:12px">New Session (Fresh Numbers)</button>
-    <button class="refresh-btn" id="clearHistory" style="margin-top:4px; border-color:#888; color:#888">Clear All History</button>
   </div>
 
   <!-- HISTORY OVERLAY -->
