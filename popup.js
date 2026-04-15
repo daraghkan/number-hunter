@@ -571,17 +571,37 @@
     runBulkScan(pats);
   });
 
+  // Consecutive ascending/descending sequences (4 and 5 digits long)
+  function sequencePatterns() {
+    const pats = [];
+    // 4-digit ascending: 1234, 2345, ..., 6789
+    for (let start = 1; start <= 6; start++) {
+      pats.push(`${start}${start+1}${start+2}${start+3}`);
+    }
+    // 4-digit descending: 9876, 8765, ..., 4321
+    for (let start = 9; start >= 4; start--) {
+      pats.push(`${start}${start-1}${start-2}${start-3}`);
+    }
+    // 5-digit ascending: 12345, ..., 56789
+    for (let start = 1; start <= 5; start++) {
+      pats.push(`${start}${start+1}${start+2}${start+3}${start+4}`);
+    }
+    // 5-digit descending: 98765, ..., 54321
+    for (let start = 9; start >= 5; start--) {
+      pats.push(`${start}${start-1}${start-2}${start-3}${start-4}`);
+    }
+    return pats;
+  }
+
   $('scanSequences').addEventListener('click', () => {
-    runBulkScan(['1234','2345','3456','4567','5678','6789','9876','8765','7654','6543','5432','4321','2468','1357','8642','7531','100','200','300','400','500','600','700','800','900','1000','2000','3000','5000','8000']);
+    runBulkScan(sequencePatterns());
   });
 
   $('scanAll').addEventListener('click', () => {
     const pats = [];
     for (let d = 0; d <= 9; d++) { pats.push(`${d}${d}${d}`); pats.push(`${d}${d}${d}${d}`); }
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
-    pats.push('1234','2345','3456','4567','5678','6789','9876','8765','7654','6543','5432','4321','2468','1357','8642','7531');
-    for (let d = 1; d <= 9; d++) pats.push(`${d}00`);
-    pats.push('1000','2000','3000','5000','8000');
+    pats.push(...sequencePatterns());
     runBulkScan([...new Set(pats)]);
   });
 

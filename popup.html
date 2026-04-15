@@ -42,7 +42,7 @@
 
     /* Presets */
     .section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
-    .preset-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .preset-btn { padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #ccc; font-size: 11px; cursor: pointer; text-align: left; transition: all 0.15s; }
     .preset-btn:hover { border-color: #ff8c00; color: #ff8c00; }
     .preset-btn .label { font-weight: 600; display: block; margin-bottom: 2px; }
@@ -142,7 +142,6 @@
     <div class="section-label">Quick Presets</div>
     <div class="preset-grid">
       <button class="preset-btn" data-filter="0000"><span class="label">Search 0000</span><span class="desc">Quad zeros</span></button>
-      <button class="preset-btn" data-filter="1234"><span class="label">Search 1234</span><span class="desc">Classic sequence</span></button>
       <button class="preset-btn" data-filter="000"><span class="label">Search 000</span><span class="desc">Round endings</span></button>
     </div>
 
@@ -150,8 +149,8 @@
     <div class="pattern-grid">
       <button class="preset-btn" id="scanTriples"><span class="label">Triples</span><span class="desc">000-999 + quads</span></button>
       <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">Every AABB combo</span></button>
-      <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">All ordered runs</span></button>
-      <button class="preset-btn" id="scanAll"><span class="label">Full Scan</span><span class="desc">130+ patterns</span></button>
+      <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>
+      <button class="preset-btn" id="scanAll"><span class="label">Full Scan</span><span class="desc">Triples + AABB + sequences</span></button>
     </div>
 
     <div class="progress" id="scanProgress">
