@@ -42,7 +42,7 @@
 
     /* Presets */
     .section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
-    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .preset-btn { padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #ccc; font-size: 11px; cursor: pointer; text-align: left; transition: all 0.15s; }
     .preset-btn:hover { border-color: #ff8c00; color: #ff8c00; }
     .preset-btn .label { font-weight: 600; display: block; margin-bottom: 2px; }
@@ -74,6 +74,16 @@
     .number-card .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
     .badge.free { background: rgba(76,175,80,0.2); color: #4caf50; }
     .badge.premium { background: rgba(255,140,0,0.2); color: #ff8c00; }
+
+    .number-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .tag { font-size: 9px; padding: 2px 6px; background: rgba(255,140,0,0.12); color: #ff8c00; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag.quad { background: rgba(255,140,0,0.25); }
+    .tag.triple { background: rgba(255,140,0,0.2); }
+    .tag.palindrome { background: rgba(138,99,255,0.2); color: #a78bfa; }
+    .tag.sequence { background: rgba(76,175,80,0.2); color: #4caf50; }
+    .tag.round { background: rgba(33,150,243,0.2); color: #64b5f6; }
+    .tag.aabb { background: rgba(255,99,132,0.2); color: #ff7b93; }
+    .tag.pair { background: rgba(255,255,255,0.08); color: #aaa; }
 
     .results-count { font-size: 11px; color: #666; margin-bottom: 8px; }
     .filter-row { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -131,10 +141,9 @@
 
     <div class="section-label">Quick Presets</div>
     <div class="preset-grid">
-      <button class="preset-btn" data-filter="0000"><span class="label">Quads</span><span class="desc">0000, 1111, etc.</span></button>
-      <button class="preset-btn" data-filter="1234"><span class="label">Sequences</span><span class="desc">1234, 5678, etc.</span></button>
-      <button class="preset-btn" data-filter="000"><span class="label">Round endings</span><span class="desc">...000, ...500, etc.</span></button>
-      <button class="preset-btn" data-filter="0000" data-type="doubles"><span class="label">Double-Doubles</span><span class="desc">AABB patterns</span></button>
+      <button class="preset-btn" data-filter="0000"><span class="label">Search 0000</span><span class="desc">Quad zeros</span></button>
+      <button class="preset-btn" data-filter="1234"><span class="label">Search 1234</span><span class="desc">Classic sequence</span></button>
+      <button class="preset-btn" data-filter="000"><span class="label">Search 000</span><span class="desc">Round endings</span></button>
     </div>
 
     <div class="section-label">Pattern Scans</div>
