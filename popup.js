@@ -451,10 +451,10 @@
       <div class="number-card${isNew ? ' new-result' : ''}">
         <div>
           <div class="num">${r.formatted}</div>
-          ${r.searchTerm ? `<div class="search-term">searched <em>${r.searchTerm}</em></div>` : ''}
           <div class="tags">
             ${isNew ? '<span class="tag new">New</span>' : ''}
             ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
+            ${r.searchTerm ? `<span class="tag search">${r.searchTerm}</span>` : ''}
           </div>
         </div>
         <div class="meta">
@@ -506,7 +506,7 @@
       lastSearchNumbers = new Set();
       try {
         const nums = await queryNumbers(digits);
-        if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
+        if (searchTerm) nums.forEach(n => { if (n.number.includes(digits)) n.searchTerm = searchTerm; });
         nums.forEach(n => lastSearchNumbers.add(n.number));
         addResults(nums);
         if (nums.length === 0) {
@@ -521,7 +521,7 @@
       searchBtn.textContent = 'Search';
     } else {
       // Longer input: generate sub-patterns and bulk scan
-      await runBulkScan(generateSubPatterns(digits), searchTerm);
+      await runBulkScan(generateSubPatterns(digits), searchTerm, digits);
     }
   });
 
@@ -540,7 +540,7 @@
   }
 
   // --- Bulk Scan ---
-  async function runBulkScan(patterns, searchTerm) {
+  async function runBulkScan(patterns, searchTerm, searchDigits) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
     scanning = true;
@@ -559,7 +559,7 @@
       if (stopRequested) break;
       try {
         const nums = await queryNumbers(pat);
-        if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
+        if (searchTerm && searchDigits) nums.forEach(n => { if (n.number.includes(searchDigits)) n.searchTerm = searchTerm; });
         nums.forEach(n => lastSearchNumbers.add(n.number));
         const added = addResults(nums);
         found += added;
