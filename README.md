@@ -14,8 +14,7 @@ Number Hunter connects to the amaysim API through your browser session and searc
    ```
 2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder
 3. Open [amaysim.com.au](https://www.amaysim.com.au), add any plan to your cart
-4. Press F12 on the amaysim page, run `copy(sessionStorage.getItem('sessionId'))` in the Console
-5. Click the Number Hunter extension icon, paste the session ID into the connect box
+4. Click the Number Hunter extension icon -- it connects automatically
 
 The status bar only appears if something needs attention. Once connected, it disappears and you're ready to search.
 
@@ -48,7 +47,7 @@ Scans run with a 300ms delay between API calls. A progress bar shows status and 
 All results go to the Results tab. Each number card shows:
 
 - **Formatted number** (e.g. 0412 345 678)
-- **Score** based on memorability (repeats, sequences, palindromes)
+- **Score** based on memorability (repeats, sequences, round endings)
 - **Free / $30 premium** badge
 - **Pattern tags** identifying what makes the number memorable
 - **Date found**
@@ -70,7 +69,6 @@ Numbers are automatically classified with up to 2 tags:
 | AABBCCDD | Four consecutive different-digit pairs | **11223344** |
 | AABBCC | Three consecutive different-digit pairs | 04 **112233** xx |
 | Sequence | 3+ ascending or descending | 04x **2345** xx |
-| Palindrome | Last 4 digits mirror | 04xxxx **1221** |
 | Round | Ends in 000/0000/500 | 04xxxx **3000** |
 | AABB | Two different-digit pairs | 04xxx **1122** x |
 | Pair | Contains a double digit | 04xxx **55** xxx |
