@@ -93,6 +93,9 @@
     .tag.pair { background: rgba(255,255,255,0.08); color: #aaa; }
     .tag.search { background: rgba(255,140,0,0.15); color: #ff8c00; }
 
+    .sort-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .sort-row select { background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
+    .sort-row select:focus { border-color: #ff8c00; outline: none; }
     .results-count { font-size: 11px; color: #666; margin-bottom: 8px; }
     .filter-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .filter-btn { padding: 4px 10px; font-size: 11px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #888; cursor: pointer; }
@@ -170,6 +173,13 @@
       <button class="filter-btn" data-filter="free">Free only</button>
       <button class="filter-btn" data-filter="premium">Premium</button>
       <button class="filter-btn" id="clearResults" style="margin-left:auto; border-color:#f44336; color:#f44336;">Clear</button>
+    </div>
+    <div class="sort-row">
+      <label style="font-size:11px; color:#888;">Sort:</label>
+      <select id="sortSelect">
+        <option value="score">Score</option>
+        <option value="recent">Most recent</option>
+      </select>
     </div>
     <div class="results-count" id="resultsCount"></div>
     <div id="resultsList">

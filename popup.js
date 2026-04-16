@@ -14,6 +14,7 @@
   let scanning = false;
   let stopRequested = false;
   let currentFilter = 'all';
+  let currentSort = 'score';
   let lastSearchNumbers = new Set(); // tracks numbers from the most recent search
 
   // Plan to add to cart (amaysim's cheapest)
@@ -431,11 +432,22 @@
     return added;
   }
 
+  // --- Sort control ---
+  $('sortSelect').addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    renderResults();
+  });
+
   // --- Render results ---
   function renderResults() {
     let filtered = allResults;
     if (currentFilter === 'free') filtered = allResults.filter(r => !r.isPremium);
     if (currentFilter === 'premium') filtered = allResults.filter(r => r.isPremium);
+
+    filtered = [...filtered].sort((a, b) => {
+      if (currentSort === 'recent') return b.foundAt - a.foundAt;
+      return b.score - a.score;
+    });
 
     resultsCount.textContent = `${filtered.length} numbers (${allResults.filter(r=>!r.isPremium).length} free, ${allResults.filter(r=>r.isPremium).length} premium)`;
 
