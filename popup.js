@@ -713,6 +713,14 @@
 
   $('closeHistory').addEventListener('click', () => { $('historyOverlay').style.display = 'none'; });
 
+  $('clearResults').addEventListener('click', async () => {
+    allResults = [];
+    lastSearchNumbers = new Set();
+    await chrome.storage.local.set({ results: [] });
+    $('totalFound').textContent = '0';
+    renderResults();
+  });
+
   $('clearHistory').addEventListener('click', async () => {
     if (confirm('Delete ALL saved number history? This cannot be undone.')) {
       historyLog = []; allResults = [];
