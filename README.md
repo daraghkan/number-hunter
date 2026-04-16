@@ -14,11 +14,9 @@ Number Hunter connects to the amaysim API through your browser session and searc
    ```
 2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder
 3. Open [amaysim.com.au](https://www.amaysim.com.au), add any plan to your cart
-4. Click the Number Hunter extension icon -- it auto-detects your session from the amaysim tab
+4. Click the Number Hunter extension icon -- it connects automatically
 
 The status bar only appears if something needs attention. Once connected, it disappears and you're ready to search.
-
-If auto-detect fails, the extension shows a connect box with instructions to manually paste your session ID.
 
 ### Searching
 
