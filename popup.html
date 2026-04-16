@@ -40,9 +40,8 @@
     .input-hint { font-size: 10px; color: #666; margin-top: -8px; margin-bottom: 10px; }
     .converted-hint { font-size: 11px; color: #ff8c00; margin-top: -8px; margin-bottom: 10px; display: none; }
 
-    /* Presets */
+    /* Labels & Buttons */
     .section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
-    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
     .preset-btn { padding: 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #ccc; font-size: 11px; cursor: pointer; text-align: left; transition: all 0.15s; }
     .preset-btn:hover { border-color: #ff8c00; color: #ff8c00; }
     .preset-btn .label { font-weight: 600; display: block; margin-bottom: 2px; }
@@ -76,6 +75,8 @@
     .badge.free { background: rgba(76,175,80,0.2); color: #4caf50; }
     .badge.premium { background: rgba(255,140,0,0.2); color: #ff8c00; }
 
+    .number-card .search-term { font-size: 10px; color: #888; margin-top: 2px; }
+    .number-card .search-term em { color: #ff8c00; font-style: normal; }
     .number-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .tag { font-size: 9px; padding: 2px 6px; background: rgba(255,140,0,0.12); color: #ff8c00; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .tag.quint { background: rgba(255,215,0,0.3); color: #ffd700; }
@@ -144,15 +145,9 @@
     </div>
     <div class="converted-hint" id="convertedHint"></div>
 
-    <div class="section-label">Quick Presets</div>
-    <div class="preset-grid">
-      <button class="preset-btn" data-filter="0000"><span class="label">Search 0000</span><span class="desc">Quad zeros</span></button>
-      <button class="preset-btn" data-filter="000"><span class="label">Search 000</span><span class="desc">Round endings</span></button>
-    </div>
-
     <div class="section-label">Pattern Scans</div>
     <div class="pattern-grid">
-      <button class="preset-btn" id="scanTriples"><span class="label">Triples</span><span class="desc">AAA, AAAA, AAAAA</span></button>
+      <button class="preset-btn" id="scanTriples"><span class="label">Repeats</span><span class="desc">AAA, AAAA, AAAAA</span></button>
       <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">AABB, AABBCC, AABBCCDD</span></button>
       <button class="preset-btn" id="scanTripleTriples"><span class="label">AAABBB</span><span class="desc">Triple + triple pairs</span></button>
       <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>

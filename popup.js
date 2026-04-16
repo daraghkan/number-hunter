@@ -390,6 +390,7 @@
           cost: n.cost || 0,
           score: scoreNumber(n.number),
           filter: n.filter,
+          searchTerm: n.searchTerm || null,
           foundAt: Date.now(),
           session: sessionId?.slice(0, 8) || 'unknown'
         });
@@ -418,6 +419,7 @@
           cost: n.cost || 0,
           score: scoreNumber(n.number),
           filter: n.filter,
+          searchTerm: n.searchTerm || null,
           foundAt: Date.now()
         });
         added++;
@@ -447,6 +449,7 @@
       <div class="number-card">
         <div>
           <div class="num">${r.formatted}</div>
+          ${r.searchTerm ? `<div class="search-term">searched <em>${r.searchTerm}</em></div>` : ''}
           ${tagsHtml(getNumberTags(r.number))}
         </div>
         <div class="meta">
@@ -466,13 +469,15 @@
       raw: n.number,
       formatted: formatNum(n.number),
       isPremium: n.isPremium,
-      score: scoreNumber(n.number)
+      score: scoreNumber(n.number),
+      searchTerm: n.searchTerm || null
     })).sort((a, b) => b.score - a.score);
 
     searchResults.innerHTML = scored.map(r => `
       <div class="number-card">
         <div>
           <div class="num">${r.formatted}</div>
+          ${r.searchTerm ? `<div class="search-term">searched <em>${r.searchTerm}</em></div>` : ''}
           ${tagsHtml(getNumberTags(r.raw))}
         </div>
         <div class="meta">
@@ -496,7 +501,9 @@
     }
 
     // Convert letters to digits
+    const hasLetters = /[a-zA-Z]/.test(raw);
     const digits = wordToDigits(raw);
+    const searchTerm = hasLetters ? raw.toUpperCase() : null;
 
     if (!digits || !/^\d+$/.test(digits)) {
       searchResults.innerHTML = '<div class="results-empty" style="padding:15px;color:#f44336">Could not convert input to digits.</div>';
@@ -509,6 +516,8 @@
       searchBtn.textContent = '...';
       try {
         const nums = await queryNumbers(digits);
+        // Attach the original search term to each result
+        if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
         addResults(nums);
         renderSearchResults(nums);
       } catch (e) {
@@ -518,22 +527,12 @@
       searchBtn.textContent = 'Search';
     } else {
       // Longer input: generate sub-patterns and bulk scan
-      await runBulkScan(generateSubPatterns(digits));
+      await runBulkScan(generateSubPatterns(digits), searchTerm);
     }
   });
 
   searchInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') searchBtn.click();
-  });
-
-  // --- Presets (single-pattern search shortcuts) ---
-  document.querySelectorAll('.preset-btn[data-filter]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const filter = btn.dataset.filter;
-      searchInput.value = filter;
-      convertedHint.style.display = 'none';
-      searchBtn.click();
-    });
   });
 
   function generateSubPatterns(digits) {
@@ -547,7 +546,7 @@
   }
 
   // --- Bulk Scan ---
-  async function runBulkScan(patterns) {
+  async function runBulkScan(patterns, searchTerm) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
     scanning = true;
@@ -565,6 +564,7 @@
       if (stopRequested) break;
       try {
         const nums = await queryNumbers(pat);
+        if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
         const added = addResults(nums);
         found += added;
       } catch (e) { /* skip */ }
