@@ -468,6 +468,7 @@
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
+          <div class="found-date">${new Date(r.foundAt).toLocaleDateString()}</div>
         </div>
       </div>`;
     }).join('');
