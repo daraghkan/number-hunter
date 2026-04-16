@@ -42,6 +42,7 @@
 
   // --- DOM refs ---
   const $ = id => document.getElementById(id);
+  const statusBar = document.querySelector('.status-bar');
   const statusDot = $('statusDot');
   const statusText = $('statusText');
   const planInfo = $('planInfo');
@@ -282,8 +283,8 @@
     if (plan?.id) {
       planId = plan.id;
       await chrome.storage.local.set({ sessionId: sid, planId });
-      setStatus('green', 'Ready');
-      planInfo.textContent = 'Ready';
+      setStatus('green', '');
+      planInfo.textContent = '';
       connectBox.classList.add('hidden');
       return true;
     }
@@ -292,7 +293,7 @@
 
   function showConnectBox() {
     setStatus('yellow', 'Need connection');
-    planInfo.textContent = 'Open amaysim cart page';
+    planInfo.textContent = '';
     connectBox.classList.remove('hidden');
   }
 
@@ -339,8 +340,13 @@
   }
 
   function setStatus(color, text) {
-    statusDot.className = 'status-dot ' + color;
-    statusText.textContent = text;
+    if (color === 'green') {
+      statusBar.classList.add('hidden');
+    } else {
+      statusBar.classList.remove('hidden');
+      statusDot.className = 'status-dot ' + color;
+      statusText.textContent = text;
+    }
   }
 
   // --- Manual session connect ---
@@ -360,12 +366,12 @@
       if (plan?.id) {
         planId = plan.id;
         await chrome.storage.local.set({ planId });
-        setStatus('green', 'Ready');
-        planInfo.textContent = 'Ready';
+        setStatus('green', '');
+        planInfo.textContent = '';
         connectBox.classList.add('hidden');
       } else {
-        setStatus('yellow', 'Connected');
-        planInfo.textContent = 'No plan in cart - add one on amaysim.com.au';
+        setStatus('yellow', 'No plan in cart');
+        planInfo.textContent = 'Add one on amaysim.com.au';
       }
     } catch (e) {
       setStatus('red', 'Invalid session');
