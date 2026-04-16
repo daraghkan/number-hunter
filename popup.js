@@ -163,12 +163,6 @@
       }
     }
 
-    // Palindrome (last 4 digits mirror)
-    const l4 = d.slice(-4);
-    if (l4 === l4.split('').reverse().join('')) {
-      tags.push({ label: 'Palindrome', cls: 'palindrome' });
-    }
-
     // Round ending (only if nothing else already tags this)
     const hasRepeat = tags.some(t => ['quint','quad','triple'].includes(t.cls));
     if (!hasRepeat && (d.endsWith('0000') || d.endsWith('000') || d.endsWith('500'))) {
@@ -209,8 +203,6 @@
       if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) score += 10;
       if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) score += 10;
     }
-    const l4 = d.slice(-4);
-    if (l4 === l4.split('').reverse().join('')) score += 12;
     if (d.endsWith('000')) score += 15;
     if (d.endsWith('0000')) score += 30;
     return score;
