@@ -52,7 +52,7 @@ All results go to the Results tab. Each number card shows:
 - **Pattern tags** identifying what makes the number memorable
 - **Date found**
 - **"New" tag** on numbers from the most recent search (clears on next search)
-- **Search term** shown if the number was found via a word search
+- **Search term tag** if the word's digits are found in the number
 
 Filter results by All / Free only / Premium.
 
