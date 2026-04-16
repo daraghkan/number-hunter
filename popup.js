@@ -15,7 +15,7 @@
   let stopRequested = false;
   let currentFilter = 'all';
   let currentSort = 'score';
-  let lastSearchNumbers = new Set(); // tracks numbers from the most recent search
+  let searches = []; // log of each search performed
 
   // Plan to add to cart (amaysim's cheapest)
   const DEFAULT_PLAN = 'unlimited-15gb';
@@ -68,6 +68,7 @@
       tab.classList.add('active');
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
       if (tab.dataset.tab === 'results') renderResults();
+      if (tab.dataset.tab === 'searches') renderSearches();
     });
   });
 
@@ -295,10 +296,11 @@
     setStatus('yellow', 'Connecting...');
 
     // Load history
-    const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount']);
+    const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches']);
     if (saved.historyLog) { historyLog = saved.historyLog; $('totalLogged').textContent = historyLog.length; }
     if (saved.sessionCount) $('totalSessions').textContent = saved.sessionCount;
     if (saved.results) { allResults = saved.results; $('totalFound').textContent = allResults.length; }
+    if (saved.searches) { searches = saved.searches; }
 
     // 1. Try saved session
     if (saved.sessionId) {
@@ -456,15 +458,25 @@
       return;
     }
 
-    resultsList.innerHTML = filtered.slice(0, 100).map(r => {
-      const isNew = lastSearchNumbers.has(r.number);
-      const tags = getNumberTags(r.number);
-      return `
-      <div class="number-card${isNew ? ' new-result' : ''}">
+    resultsList.innerHTML = filtered.slice(0, 100).map(renderNumberCard).join('');
+  }
+
+  function switchToResults() {
+    tabs.forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="results"]').classList.add('active');
+    $('panel-results').classList.add('active');
+    renderResults();
+  }
+
+  // --- Shared number card renderer ---
+  function renderNumberCard(r) {
+    const tags = getNumberTags(r.number);
+    return `
+      <div class="number-card">
         <div>
           <div class="num">${r.formatted}</div>
           <div class="tags">
-            ${isNew ? '<span class="tag new">New</span>' : ''}
             ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
             ${r.searchTerm ? `<span class="tag search">${r.searchTerm}</span>` : ''}
           </div>
@@ -475,15 +487,68 @@
           <div class="found-date">${new Date(r.foundAt).toLocaleDateString()}</div>
         </div>
       </div>`;
-    }).join('');
   }
 
-  function switchToResults() {
-    tabs.forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-tab="results"]').classList.add('active');
-    $('panel-results').classList.add('active');
-    renderResults();
+  // --- Search logging and rendering ---
+  async function logSearch(entry) {
+    searches.unshift(entry);
+    if (searches.length > 200) searches = searches.slice(0, 200);
+    await chrome.storage.local.set({ searches });
+  }
+
+  function formatRelativeTime(ts) {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  function renderSearches() {
+    const countEl = $('searchesCount');
+    const listEl = $('searchesList');
+
+    if (searches.length === 0) {
+      countEl.textContent = '';
+      listEl.innerHTML = '<div class="results-empty">No searches yet. Run a search or scan first.</div>';
+      return;
+    }
+
+    countEl.textContent = `${searches.length} search${searches.length === 1 ? '' : 'es'} — last ${formatRelativeTime(searches[0].timestamp)}`;
+
+    const resultsByNumber = new Map(allResults.map(r => [r.number, r]));
+
+    listEl.innerHTML = searches.map((s, idx) => {
+      const matchCount = s.matches.length;
+      const digitsLabel = s.digits && s.digits !== s.input ? ` <span class="search-digits">${s.digits}</span>` : '';
+      const matchesHtml = matchCount === 0
+        ? '<div class="no-matches">No numbers matched this search.</div>'
+        : s.matches.map(num => resultsByNumber.get(num)).filter(Boolean).map(renderNumberCard).join('');
+      return `
+        <div class="search-card" data-idx="${idx}">
+          <div class="search-card-header">
+            <div>
+              <div class="search-card-title">${s.input}${digitsLabel}</div>
+            </div>
+            <div class="search-card-meta">
+              <span class="match-count${matchCount === 0 ? ' zero' : ''}">${matchCount} match${matchCount === 1 ? '' : 'es'}</span>
+              <span>${formatRelativeTime(s.timestamp)}</span>
+              <span class="search-card-toggle">▸</span>
+            </div>
+          </div>
+          <div class="search-card-matches">${matchesHtml}</div>
+        </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.search-card-header').forEach(header => {
+      header.addEventListener('click', () => {
+        header.parentElement.classList.toggle('expanded');
+      });
+    });
   }
 
   // --- Search (supports numbers and words) ---
@@ -515,12 +580,12 @@
     if (digits.length <= 5) {
       searchBtn.disabled = true;
       searchBtn.textContent = '...';
-      lastSearchNumbers = new Set();
       try {
         const nums = await queryNumbers(digits);
         if (searchTerm) nums.forEach(n => { if (n.number.includes(digits)) n.searchTerm = searchTerm; });
-        nums.forEach(n => lastSearchNumbers.add(n.number));
         addResults(nums);
+        const matches = nums.filter(n => n.number.includes(digits)).map(n => n.number);
+        await logSearch({ input: searchTerm || digits, digits, matches, timestamp: Date.now() });
         if (nums.length === 0) {
           searchResults.innerHTML = '<div class="results-empty" style="padding:15px">No numbers found for this pattern.</div>';
         } else {
@@ -533,7 +598,7 @@
       searchBtn.textContent = 'Search';
     } else {
       // Longer input: generate sub-patterns and bulk scan
-      await runBulkScan(generateSubPatterns(digits), searchTerm, digits);
+      await runBulkScan(generateSubPatterns(digits), searchTerm, digits, searchTerm || digits);
     }
   });
 
@@ -552,13 +617,13 @@
   }
 
   // --- Bulk Scan ---
-  async function runBulkScan(patterns, searchTerm, searchDigits) {
+  async function runBulkScan(patterns, searchTerm, searchDigits, label) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
     scanning = true;
     stopRequested = false;
-    lastSearchNumbers = new Set();
     const total = patterns.length;
+    const matchedNumbers = new Set();
 
     scanProgress.classList.add('active');
     stopScanBtn.style.display = 'block';
@@ -572,7 +637,11 @@
       try {
         const nums = await queryNumbers(pat);
         if (searchTerm && searchDigits) nums.forEach(n => { if (n.number.includes(searchDigits)) n.searchTerm = searchTerm; });
-        nums.forEach(n => lastSearchNumbers.add(n.number));
+        if (searchDigits) {
+          nums.forEach(n => { if (n.number.includes(searchDigits)) matchedNumbers.add(n.number); });
+        } else {
+          nums.forEach(n => matchedNumbers.add(n.number));
+        }
         const added = addResults(nums);
         found += added;
       } catch (e) { /* skip */ }
@@ -589,6 +658,15 @@
     document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = false);
     progressText.textContent = `Done! ${found} new numbers across ${scanned} patterns.`;
 
+    if (label) {
+      await logSearch({
+        input: label,
+        digits: searchDigits || null,
+        matches: [...matchedNumbers],
+        timestamp: Date.now()
+      });
+    }
+
     switchToResults();
   }
 
@@ -603,14 +681,14 @@
       pats.push(`${d}${d}${d}${d}`);
       pats.push(`${d}${d}${d}${d}${d}`);
     }
-    runBulkScan(pats);
+    runBulkScan(pats, null, null, 'Repeats scan');
   });
 
   // All Doubles scan: AABB for each distinct digit pair (post-filter tags mark AABBCC / AABBCCDD)
   $('scanDoubleDoubles').addEventListener('click', () => {
     const pats = [];
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
-    runBulkScan(pats);
+    runBulkScan(pats, null, null, 'All Doubles scan');
   });
 
   // AAABBB scan: search 5-char prefix AAABB for each distinct digit pair.
@@ -619,7 +697,7 @@
   $('scanTripleTriples').addEventListener('click', () => {
     const pats = [];
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
-    runBulkScan(pats);
+    runBulkScan(pats, null, null, 'AAABBB scan');
   });
 
   // Consecutive ascending/descending sequences (4 and 5 digits long)
@@ -645,7 +723,7 @@
   }
 
   $('scanSequences').addEventListener('click', () => {
-    runBulkScan(sequencePatterns());
+    runBulkScan(sequencePatterns(), null, null, 'Sequences scan');
   });
 
   $('scanAll').addEventListener('click', () => {
@@ -662,7 +740,7 @@
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
     // Sequences
     pats.push(...sequencePatterns());
-    runBulkScan([...new Set(pats)]);
+    runBulkScan([...new Set(pats)], null, null, 'Full scan');
   });
 
   // --- Export CSV ---
@@ -719,10 +797,18 @@
 
   $('clearResults').addEventListener('click', async () => {
     allResults = [];
-    lastSearchNumbers = new Set();
     await chrome.storage.local.set({ results: [] });
     $('totalFound').textContent = '0';
     renderResults();
+  });
+
+  $('clearSearches').addEventListener('click', async () => {
+    if (searches.length === 0) return;
+    if (confirm('Clear all search history?')) {
+      searches = [];
+      await chrome.storage.local.set({ searches: [] });
+      renderSearches();
+    }
   });
 
   $('clearHistory').addEventListener('click', async () => {

@@ -79,8 +79,6 @@
 
     .number-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .tag { font-size: 9px; padding: 2px 6px; background: rgba(255,140,0,0.12); color: #ff8c00; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .tag.new { background: rgba(76,175,80,0.3); color: #4caf50; }
-    .number-card.new-result { border-color: #333; }
     .tag.quint { background: rgba(255,215,0,0.3); color: #ffd700; }
     .tag.quad { background: rgba(255,140,0,0.25); }
     .tag.triple { background: rgba(255,140,0,0.2); }
@@ -92,6 +90,22 @@
     .tag.aabb { background: rgba(255,99,132,0.2); color: #ff7b93; }
     .tag.pair { background: rgba(255,255,255,0.08); color: #aaa; }
     .tag.search { background: rgba(255,140,0,0.15); color: #ff8c00; }
+
+    /* Searches tab */
+    .searches-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+    .search-card { background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .search-card-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
+    .search-card-title { font-weight: 600; color: #fff; font-size: 13px; }
+    .search-card-title .search-digits { color: #888; font-size: 11px; font-weight: 400; margin-left: 6px; }
+    .search-card-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #888; white-space: nowrap; }
+    .search-card-meta .match-count { color: #ff8c00; font-weight: 600; }
+    .search-card-meta .match-count.zero { color: #888; font-weight: 400; }
+    .search-card-toggle { color: #666; font-size: 10px; margin-left: 6px; display: inline-block; transition: transform 0.15s; }
+    .search-card-matches { margin-top: 10px; display: none; }
+    .search-card.expanded .search-card-matches { display: block; }
+    .search-card.expanded .search-card-toggle { transform: rotate(90deg); }
+    .search-card-matches .number-card { background: #0f0f0f; }
+    .no-matches { text-align: center; padding: 16px; color: #666; font-size: 11px; font-style: italic; }
 
     .sort-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
     .sort-row select { background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
@@ -127,7 +141,8 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="search">Search</button>
-    <button class="tab" data-tab="results">Results</button>
+    <button class="tab" data-tab="searches">Searches</button>
+    <button class="tab" data-tab="results">All Numbers</button>
   </div>
 
   <!-- SEARCH TAB -->
@@ -164,6 +179,17 @@
     <button class="scan-btn" id="stopScan" style="display:none; background:#f44336;">Stop Scan</button>
 
     <div id="searchResults"></div>
+  </div>
+
+  <!-- SEARCHES TAB -->
+  <div class="panel" id="panel-searches">
+    <div class="searches-header">
+      <div class="results-count" id="searchesCount"></div>
+      <button class="filter-btn" id="clearSearches" style="border-color:#f44336; color:#f44336;">Clear</button>
+    </div>
+    <div id="searchesList">
+      <div class="results-empty">No searches yet.</div>
+    </div>
   </div>
 
   <!-- RESULTS TAB -->

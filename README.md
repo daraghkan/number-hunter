@@ -42,19 +42,21 @@ Run bulk scans across many patterns at once:
 
 Scans run with a 300ms delay between API calls. A progress bar shows status and you can stop at any time.
 
-### Results
+### Searches and Results
 
-All results go to the Results tab. Each number card shows:
+Results are split across two tabs:
+
+- **Searches tab** -- one entry per search or scan you've run. Click an entry to expand and see only the numbers that actually matched. If nothing matched, it says so. Each entry shows how long ago the search ran.
+- **All Numbers tab** -- every number found across every search. Sort by score or most recent. Filter by All / Free / Premium.
+
+Each number card shows:
 
 - **Formatted number** (e.g. 0412 345 678)
 - **Score** based on memorability (repeats, sequences, round endings)
 - **Free / $30 premium** badge
 - **Pattern tags** identifying what makes the number memorable
 - **Date found**
-- **"New" tag** on numbers from the most recent search (clears on next search)
 - **Search term tag** if the word's digits are found in the number
-
-Filter results by All / Free only / Premium.
 
 ### Pattern Tags
 
@@ -75,7 +77,7 @@ Numbers are automatically classified with up to 2 tags:
 
 ### Export
 
-From the Results tab:
+From the All Numbers tab:
 
 - **Export CSV** / **Export JSON** -- download all-time number history
 - **View Full History** -- see every number ever found across all sessions
