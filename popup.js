@@ -14,6 +14,7 @@
   let scanning = false;
   let stopRequested = false;
   let currentFilter = 'all';
+  let lastSearchNumbers = new Set(); // tracks numbers from the most recent search
 
   // Plan to add to cart (amaysim's cheapest)
   const DEFAULT_PLAN = 'unlimited-15gb';
@@ -282,7 +283,7 @@
       planId = plan.id;
       await chrome.storage.local.set({ sessionId: sid, planId });
       setStatus('green', 'Ready');
-      planInfo.textContent = plan.name || 'Plan loaded';
+      planInfo.textContent = 'Ready';
       connectBox.classList.add('hidden');
       return true;
     }
@@ -360,7 +361,7 @@
         planId = plan.id;
         await chrome.storage.local.set({ planId });
         setStatus('green', 'Ready');
-        planInfo.textContent = plan.name || 'Plan loaded';
+        planInfo.textContent = 'Ready';
         connectBox.classList.add('hidden');
       } else {
         setStatus('yellow', 'Connected');
@@ -445,47 +446,33 @@
       return;
     }
 
-    resultsList.innerHTML = filtered.slice(0, 100).map(r => `
-      <div class="number-card">
+    resultsList.innerHTML = filtered.slice(0, 100).map(r => {
+      const isNew = lastSearchNumbers.has(r.number);
+      const tags = getNumberTags(r.number);
+      return `
+      <div class="number-card${isNew ? ' new-result' : ''}">
         <div>
           <div class="num">${r.formatted}</div>
           ${r.searchTerm ? `<div class="search-term">searched <em>${r.searchTerm}</em></div>` : ''}
-          ${tagsHtml(getNumberTags(r.number))}
+          <div class="tags">
+            ${isNew ? '<span class="tag new">New</span>' : ''}
+            ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
+          </div>
         </div>
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   }
 
-  function renderSearchResults(numbers) {
-    if (numbers.length === 0) {
-      searchResults.innerHTML = '<div class="results-empty" style="padding:15px">No numbers found for this pattern.</div>';
-      return;
-    }
-    const scored = numbers.map(n => ({
-      raw: n.number,
-      formatted: formatNum(n.number),
-      isPremium: n.isPremium,
-      score: scoreNumber(n.number),
-      searchTerm: n.searchTerm || null
-    })).sort((a, b) => b.score - a.score);
-
-    searchResults.innerHTML = scored.map(r => `
-      <div class="number-card">
-        <div>
-          <div class="num">${r.formatted}</div>
-          ${r.searchTerm ? `<div class="search-term">searched <em>${r.searchTerm}</em></div>` : ''}
-          ${tagsHtml(getNumberTags(r.raw))}
-        </div>
-        <div class="meta">
-          <div class="score">score ${r.score}</div>
-          <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
-        </div>
-      </div>
-    `).join('');
+  function switchToResults() {
+    tabs.forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="results"]').classList.add('active');
+    $('panel-results').classList.add('active');
+    renderResults();
   }
 
   // --- Search (supports numbers and words) ---
@@ -510,16 +497,24 @@
       return;
     }
 
+    // Clear search results area (only used for errors now)
+    searchResults.innerHTML = '';
+
     // If 1-5 digits, do a single search. If longer, do a multi-pattern scan.
     if (digits.length <= 5) {
       searchBtn.disabled = true;
       searchBtn.textContent = '...';
+      lastSearchNumbers = new Set();
       try {
         const nums = await queryNumbers(digits);
-        // Attach the original search term to each result
         if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
+        nums.forEach(n => lastSearchNumbers.add(n.number));
         addResults(nums);
-        renderSearchResults(nums);
+        if (nums.length === 0) {
+          searchResults.innerHTML = '<div class="results-empty" style="padding:15px">No numbers found for this pattern.</div>';
+        } else {
+          switchToResults();
+        }
       } catch (e) {
         searchResults.innerHTML = `<div class="results-empty" style="padding:15px;color:#f44336">${e.message}</div>`;
       }
@@ -551,6 +546,7 @@
     if (!planId) { alert('Not ready yet.'); return; }
     scanning = true;
     stopRequested = false;
+    lastSearchNumbers = new Set();
     const total = patterns.length;
 
     scanProgress.classList.add('active');
@@ -565,6 +561,7 @@
       try {
         const nums = await queryNumbers(pat);
         if (searchTerm) nums.forEach(n => n.searchTerm = searchTerm);
+        nums.forEach(n => lastSearchNumbers.add(n.number));
         const added = addResults(nums);
         found += added;
       } catch (e) { /* skip */ }
@@ -581,11 +578,7 @@
     document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = false);
     progressText.textContent = `Done! ${found} new numbers across ${scanned} patterns.`;
 
-    tabs.forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-tab="results"]').classList.add('active');
-    $('panel-results').classList.add('active');
-    renderResults();
+    switchToResults();
   }
 
   stopScanBtn.addEventListener('click', () => { stopRequested = true; });
