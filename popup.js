@@ -484,7 +484,7 @@
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
-          <div class="found-date">${new Date(r.foundAt).toLocaleDateString()}</div>
+          <div class="found-date">${formatFoundAt(r.foundAt)}</div>
         </div>
       </div>`;
   }
@@ -494,6 +494,17 @@
     searches.unshift(entry);
     if (searches.length > 200) searches = searches.slice(0, 200);
     await chrome.storage.local.set({ searches });
+  }
+
+  function formatFoundAt(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const isToday = d.getFullYear() === now.getFullYear()
+      && d.getMonth() === now.getMonth()
+      && d.getDate() === now.getDate();
+    return isToday
+      ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : d.toLocaleDateString();
   }
 
   function formatRelativeTime(ts) {
