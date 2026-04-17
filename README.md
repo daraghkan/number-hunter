@@ -34,7 +34,9 @@ Run bulk scans across many patterns at once:
 
 | Scan | What it searches |
 |------|-----------------|
-| **Repeats** | AAA, AAAA, AAAAA for each digit (30 patterns) |
+| **Triples** | AAA for each digit (10 patterns) |
+| **Quads** | AAAA for each digit (10 patterns) |
+| **Quints** | AAAAA for each digit (10 patterns) |
 | **All Doubles** | Every AABB combination (90 patterns) |
 | **AAABBB** | Every triple-triple pair like 111222 (90 patterns) |
 | **Sequences** | 4 and 5 digit ascending/descending runs like 1234, 98765 (22 patterns) |
@@ -67,10 +69,12 @@ Numbers are automatically classified with up to 2 tags:
 | Quint | 5 same digits in a row | 04x **99999** x |
 | Quad | 4 same digits | 04x **8888** xx |
 | Triple | 3 same digits | 04x **777** xxx |
-| AAABBB | Two triples of different digits | 04x **111222** |
 | AABBCCDD | Four consecutive different-digit pairs | **11223344** |
 | AABBCC | Three consecutive different-digit pairs | 04 **112233** xx |
-| Sequence | 3+ ascending or descending | 04x **2345** xx |
+| AAABBB | Two triples of different digits | 04x **111222** |
+| AAABB | Triple followed by a pair | 04x **11122** x |
+| AABBB | Pair followed by a triple | 04x **11222** x |
+| Seq _nnn_ | 3+ ascending or descending run (tag shows the digits, e.g. `Seq 234`) | 04x **2345** xx |
 | Round | Ends in 000/0000/500 | 04xxxx **3000** |
 | AABB | Two different-digit pairs | 04xxx **1122** x |
 | Pair | Contains a double digit | 04xxx **55** xxx |

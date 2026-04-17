@@ -83,6 +83,8 @@
     .tag.quad { background: rgba(255,140,0,0.25); }
     .tag.triple { background: rgba(255,140,0,0.2); }
     .tag.aaabbb { background: rgba(255,100,0,0.25); color: #ffb266; }
+    .tag.aaabb { background: rgba(255,100,0,0.2); color: #ffa366; }
+    .tag.aabbb { background: rgba(255,100,0,0.18); color: #ff9952; }
     .tag.aabbccdd { background: rgba(138,99,255,0.3); color: #c4b5fd; }
     .tag.aabbcc { background: rgba(138,99,255,0.22); color: #b8a6fa; }
     .tag.sequence { background: rgba(76,175,80,0.2); color: #4caf50; }
@@ -165,7 +167,9 @@
 
     <div class="section-label">Pattern Scans</div>
     <div class="pattern-grid">
-      <button class="preset-btn" id="scanTriples"><span class="label">Repeats</span><span class="desc">AAA, AAAA, AAAAA</span></button>
+      <button class="preset-btn" id="scanAAA"><span class="label">Triples</span><span class="desc">AAA (e.g. 333)</span></button>
+      <button class="preset-btn" id="scanAAAA"><span class="label">Quads</span><span class="desc">AAAA (e.g. 3333)</span></button>
+      <button class="preset-btn" id="scanAAAAA"><span class="label">Quints</span><span class="desc">AAAAA (e.g. 33333)</span></button>
       <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">AABB, AABBCC, AABBCCDD</span></button>
       <button class="preset-btn" id="scanTripleTriples"><span class="label">AAABBB</span><span class="desc">Triple + triple pairs</span></button>
       <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>

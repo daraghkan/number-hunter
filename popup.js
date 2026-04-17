@@ -126,10 +126,37 @@
     const m = d.match(/(\d)\1\1(\d)\2\2/);
     return !!m && m[1] !== m[2];
   }
+  // AAABB: triple then pair of different digits (e.g. 11122)
+  function hasAAABB(d) {
+    const m = d.match(/(\d)\1\1(\d)\2/);
+    return !!m && m[1] !== m[2];
+  }
+  // AABBB: pair then triple of different digits (e.g. 11222)
+  function hasAABBB(d) {
+    const m = d.match(/(\d)\1(\d)\2\2/);
+    return !!m && m[1] !== m[2];
+  }
   // AABB: a pair followed by a different pair (e.g. 1122)
   function hasAABB(d) {
     const m = d.match(/(\d)\1(\d)\2/);
     return !!m && m[1] !== m[2];
+  }
+
+  // Find the longest ascending or descending run of consecutive digits (3+)
+  function findSequence(d) {
+    let best = '';
+    for (let i = 0; i < d.length; i++) {
+      let asc = d[i], desc = d[i];
+      for (let j = i + 1; j < d.length; j++) {
+        if (+d[j] === +d[j-1] + 1) asc += d[j]; else break;
+      }
+      for (let j = i + 1; j < d.length; j++) {
+        if (+d[j] === +d[j-1] - 1) desc += d[j]; else break;
+      }
+      const longer = asc.length >= desc.length ? asc : desc;
+      if (longer.length >= 3 && longer.length > best.length) best = longer;
+    }
+    return best;
   }
 
   // --- Classify a number into tags ---
@@ -146,23 +173,23 @@
       tags.push({ label: 'Triple', cls: 'triple' });
     }
 
-    // Grouped pair patterns (priority: AABBCCDD > AABBCC > AAABBB > AABB)
+    // Grouped pair patterns (priority: AABBCCDD > AABBCC > AAABBB > AAABB > AABBB > AABB)
     if (hasAABBCCDD(d)) {
       tags.push({ label: 'AABBCCDD', cls: 'aabbccdd' });
     } else if (hasAABBCC(d)) {
       tags.push({ label: 'AABBCC', cls: 'aabbcc' });
     } else if (hasAAABBB(d)) {
       tags.push({ label: 'AAABBB', cls: 'aaabbb' });
+    } else if (hasAAABB(d)) {
+      tags.push({ label: 'AAABB', cls: 'aaabb' });
+    } else if (hasAABBB(d)) {
+      tags.push({ label: 'AABBB', cls: 'aabbb' });
     }
 
-    // Sequence (3+ ascending or descending consecutive digits)
-    for (let i = 0; i < d.length - 2; i++) {
-      if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) {
-        tags.push({ label: 'Sequence', cls: 'sequence' }); break;
-      }
-      if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) {
-        tags.push({ label: 'Sequence', cls: 'sequence' }); break;
-      }
+    // Sequence (3+ ascending or descending consecutive digits) — include digits in label
+    const seq = findSequence(d);
+    if (seq) {
+      tags.push({ label: `Seq ${seq}`, cls: 'sequence' });
     }
 
     // Round ending (only if nothing else already tags this)
@@ -172,7 +199,7 @@
     }
 
     // AABB (fallback if no larger grouped pattern matched)
-    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','quint','quad'].includes(t.cls));
+    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad'].includes(t.cls));
     if (!hasGrouped && hasAABB(d)) {
       tags.push({ label: 'AABB', cls: 'aabb' });
     }
@@ -684,16 +711,15 @@
   stopScanBtn.addEventListener('click', () => { stopRequested = true; });
 
   // --- Scan presets ---
-  // Triples scan: AAA (3x), AAAA (4x), AAAAA (5x) for each digit 0-9
-  $('scanTriples').addEventListener('click', () => {
+  // Run one of the repeat-digit scans (3, 4, or 5 of the same digit)
+  function runRepeatScan(count, label) {
     const pats = [];
-    for (let d = 0; d <= 9; d++) {
-      pats.push(`${d}${d}${d}`);
-      pats.push(`${d}${d}${d}${d}`);
-      pats.push(`${d}${d}${d}${d}${d}`);
-    }
-    runBulkScan(pats, null, null, 'Repeats scan');
-  });
+    for (let d = 0; d <= 9; d++) pats.push(String(d).repeat(count));
+    runBulkScan(pats, null, null, label);
+  }
+  $('scanAAA').addEventListener('click', () => runRepeatScan(3, 'Triples scan'));
+  $('scanAAAA').addEventListener('click', () => runRepeatScan(4, 'Quads scan'));
+  $('scanAAAAA').addEventListener('click', () => runRepeatScan(5, 'Quints scan'));
 
   // All Doubles scan: AABB for each distinct digit pair (post-filter tags mark AABBCC / AABBCCDD)
   $('scanDoubleDoubles').addEventListener('click', () => {
