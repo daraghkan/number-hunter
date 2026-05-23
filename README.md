@@ -1,10 +1,10 @@
 # Number Hunter
 
-A Chrome extension for finding memorable phone numbers available on amaysim.com.au. Search by digits or words, run pattern scans, and score numbers by memorability.
+A Chrome extension for finding memorable phone numbers available on amaysim.com.au. Search by digits or words, run pattern scans, score numbers by memorability, favourite the good ones, and copy them to your clipboard with one click.
 
 ## How It Works
 
-Number Hunter connects to the amaysim API through your browser session and searches for available phone numbers matching patterns you specify. Numbers are scored and tagged by their memorability patterns.
+Number Hunter creates its own amaysim browser session, adds a plan to the cart in the background, and uses amaysim's GraphQL API to enumerate available phone numbers matching the filters you give it. Numbers are scored and tagged client-side by their memorability patterns.
 
 ### Setup
 
@@ -12,21 +12,24 @@ Number Hunter connects to the amaysim API through your browser session and searc
    ```bash
    git clone https://github.com/daraghkan/number-hunter.git
    ```
-2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder
-3. Open [amaysim.com.au](https://www.amaysim.com.au), add any plan to your cart
-4. Click the Number Hunter extension icon -- it connects automatically
+2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder.
+3. Click the Number Hunter icon -- a welcome card greets you on first run. Once the orange status bar disappears, you're connected and ready.
 
-The status bar only appears if something needs attention. Once connected, it disappears and you're ready to search.
+No amaysim tab or manual setup is needed. If auto-setup ever fails, the extension shows a step-by-step explainer for grabbing a session ID from amaysim.com.au and pasting it in manually.
 
 ### Searching
 
 Type digits or a word into the search box and hit Search.
 
-- **Digits** (1-5 characters): searches the amaysim API directly for numbers containing that pattern
-- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665) and searched
-- **Longer input** (6+ characters): automatically split into sub-patterns and scanned as a bulk search
+- **Digits** (1-5 characters): searches the amaysim API directly for numbers containing that pattern.
+- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665) and searched.
+- **Longer input** (6+ characters): automatically split into sub-patterns and scanned in bulk.
 
-A live hint shows the conversion as you type letters.
+A live hint shows the digit conversion as you type letters.
+
+### Find Best Number
+
+A single top-level button that runs a deep full scan (all patterns, three passes each), jumps you to the **All Numbers** tab sorted by score, and highlights the winning card with a gold border and `TOP SCORE` ribbon.
 
 ### Pattern Scans
 
@@ -39,30 +42,45 @@ Run bulk scans across many patterns at once:
 | **Quints** | AAAAA for each digit (10 patterns) |
 | **All Doubles** | Every AABB combination (90 patterns) |
 | **AAABBB** | Every triple-triple pair like 111222 (90 patterns) |
+| **ABAB** | Every alternating pair like 1212, 3434 (90 patterns) |
+| **Mirrors** | Every ABBA palindrome of 4 like 1221, 3443 (90 patterns) |
 | **Sequences** | 4 and 5 digit ascending/descending runs like 1234, 98765 (22 patterns) |
-| **Full Scan** | All of the above combined |
+| **Round 00** | Ends in 100, 200, ..., 900 (9 patterns) |
 
-Scans run with a 300ms delay between API calls. A progress bar shows status and you can stop at any time.
+#### Scan modifiers
+
+Two checkboxes sit next to the Pattern Scans heading:
+
+- **Deep** -- queries each filter 3 times instead of once. The amaysim API tracks a `flushList` of numbers it has already shown you and rotates fresh ones in, so repeating the same filter yields up to 3x more candidates.
+- **3× sessions** -- after finishing one pass of all patterns, the extension creates a brand-new amaysim session (fresh `sessionId` + cart) and runs the same scan again. Each session has its own number pool, so this surfaces numbers the previous session never had access to. Triples the scan time.
+
+Both modifiers stack. The longest run (Full Scan + Deep + 3× sessions) is about 23 minutes; the shortest (one pattern, no modifiers) takes a few seconds.
+
+Scans run with a 300ms delay between API calls. A sticky progress bar at the bottom of the panel shows the session count, pass number, new numbers found, and an ETA. The **Stop** button next to it works mid-scan.
+
+#### Scans keep running when the popup closes
+
+The scan loop runs in the background service worker, not in the popup. Click somewhere else, the popup closes, but the scan keeps going. Reopen the popup and the progress bar picks up where it left off; numbers stream into the All Numbers tab live as they're found.
 
 ### Searches and Results
 
-Results are split across two tabs:
-
-- **Searches tab** -- one entry per search or scan you've run. Click an entry to expand and see only the numbers that actually matched. If nothing matched, it says so. Each entry shows how long ago the search ran.
-- **All Numbers tab** -- every number found across every search. Sort by score or most recent. Filter by All / Free / Premium.
+- **Recent Searches** -- one entry per search or scan you've run. Click an entry to expand and see only the numbers that actually matched. If nothing matched, it says so. Each entry shows how long ago the search ran.
+- **All Numbers** -- every number found across every search. Sort by score or most recent. Filter by All / ★ Favs / Free / Premium.
 
 Each number card shows:
 
-- **Formatted number** (e.g. 0412 345 678)
-- **Score** based on memorability (repeats, sequences, round endings)
+- **Formatted number** (e.g. `0412 345 678`) and **international format** (`+61 412 345 678`)
+- **Score** based on memorability
 - **Free / $30 premium** badge
-- **Pattern tags** identifying what makes the number memorable
+- **Pattern tags** identifying what makes the number memorable (up to 4 tags per card)
 - **Date found**
 - **Search term tag** if the word's digits are found in the number
+- **★ favourite toggle** -- click to save the number; favourites survive Clear All History
+- **Click anywhere else on the card to copy** the number to your clipboard
 
 ### Pattern Tags
 
-Numbers are automatically classified with up to 2 tags:
+Numbers are automatically classified with up to 4 tags:
 
 | Tag | Pattern | Example |
 |-----|---------|---------|
@@ -74,31 +92,47 @@ Numbers are automatically classified with up to 2 tags:
 | AAABBB | Two triples of different digits | 04x **111222** |
 | AAABB | Triple followed by a pair | 04x **11122** x |
 | AABBB | Pair followed by a triple | 04x **11222** x |
+| ABCABC | A 3-digit block repeated, all distinct | 04 **123123** xx |
+| ABAB | Alternating two distinct digits | 04xx **1212** xx |
+| Mirror | 4-character palindrome (ABBA) | 04xx **1221** xx |
 | Seq _nnn_ | 3+ ascending or descending run (tag shows the digits, e.g. `Seq 234`) | 04x **2345** xx |
-| Round | Ends in 000/0000/500 | 04xxxx **3000** |
+| Round | Ends in 000/0000/500 or any X00 | 04xxxx **3000** or 04xxxx **700** |
 | AABB | Two different-digit pairs | 04xxx **1122** x |
+| Heavy | A single digit appears 4+ times anywhere | `Heavy 8 ×5` |
 | Pair | Contains a double digit | 04xxx **55** xxx |
 
-### Export
+### Scoring
 
-From the All Numbers tab:
+Numbers are scored by combining bonuses for runs of repeats, pairs, ascending/descending sequences, repeating blocks (ABCABC), alternating pairs (ABAB), mirrors, single-digit dominance, and round endings. A rough calibration:
+
+- **0–30** -- everyday numbers
+- **60+** -- rare
+- **90+** -- exceptional
+
+### Export and history
+
+The **More actions** menu in the All Numbers tab keeps less-used controls tucked away:
 
 - **Export CSV** / **Export JSON** -- download all-time number history
 - **View Full History** -- see every number ever found across all sessions
-- **New Session** -- get a fresh number pool (history is preserved)
-- **Clear All History** -- delete everything
+- **Clear All History** -- delete everything (favourites are preserved)
+
+The **New Session (Fresh Numbers)** button is at the top of the actions area -- creates a new amaysim session for a different number pool while keeping history intact.
 
 ## Architecture
 
 ```
-popup.html/js     -- Extension popup UI and main logic
-background.js     -- Service worker proxying API calls to amaysim
-content.js        -- Content script relaying messages to page bridge
-page-bridge.js    -- Runs in page context to access sessionStorage
-get-session.js    -- Injected by background to extract session ID
+popup.html / popup.js   -- Extension popup UI and interactions
+background.js           -- Service worker. Runs the scan loop, owns scan state,
+                           bootstraps fresh sessions for rotation, persists results
+                           to chrome.storage.local
+content.js              -- Content script relaying messages to page bridge
+page-bridge.js          -- Runs in page context to access amaysim sessionStorage
+get-session.js          -- Injected by background to extract session ID from an open
+                           amaysim tab (used by manual fallback path)
 ```
 
-The extension uses Chrome's Manifest V3, `chrome.storage.local` for persistence, and communicates with the amaysim GraphQL API at `https://api.amaysim.com.au/mobile/graphql`.
+The extension uses Chrome's Manifest V3, `chrome.storage.local` for persistence (results, history, favourites, scan state), and communicates with the amaysim GraphQL API at `https://api.amaysim.com.au/mobile/graphql`. Scan state is persisted on every step so a service-worker recycle resumes cleanly.
 
 ## License
 
