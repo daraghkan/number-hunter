@@ -6,9 +6,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { width: 420px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; }
 
-    .header { background: linear-gradient(135deg, #ff8c00, #ff6600); padding: 16px; text-align: center; }
-    .header h1 { font-size: 18px; color: #fff; margin-bottom: 2px; }
-    .header p { font-size: 11px; color: rgba(255,255,255,0.8); }
+    .header { background: linear-gradient(135deg, #ff8c00, #ff6600); padding: 10px 16px; text-align: center; }
+    .header h1 { font-size: 14px; color: #fff; font-weight: 700; letter-spacing: 0.3px; }
 
     .status-bar { padding: 8px 16px; background: #111; border-bottom: 1px solid #222; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
     .status-bar.hidden { display: none; }
@@ -25,6 +24,11 @@
 
     .panel { display: none; padding: 16px; max-height: 400px; overflow-y: auto; }
     .panel.active { display: block; }
+
+    /* Welcome box (first run) */
+    .welcome-box { padding: 10px 12px; background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; margin-bottom: 12px; }
+    .welcome-box.hidden { display: none; }
+    .welcome-box code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-family: 'SF Mono', 'Fira Code', monospace; }
 
     /* Connect box */
     .connect-box { padding: 10px; background: #1a1200; border: 1px solid #ff8c00; border-radius: 6px; font-size: 11px; margin-bottom: 12px; }
@@ -59,17 +63,30 @@
     .pattern-grid .preset-btn.full-width { grid-column: 1 / -1; }
 
     /* Progress */
-    .progress { display: none; margin: 12px 0; }
+    .progress { display: none; margin: 12px 0; position: sticky; bottom: 0; background: #0a0a0a; padding: 6px 0; z-index: 10; }
     .progress.active { display: block; }
     .progress-bar { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
     .progress-fill { height: 100%; background: #ff8c00; transition: width 0.3s; width: 0%; }
-    .progress-text { font-size: 11px; color: #888; margin-top: 4px; }
+    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; gap: 8px; }
+    .progress-text { font-size: 11px; color: #888; }
+    .stop-btn-inline { padding: 3px 10px; font-size: 11px; background: #2a1414; color: #f88; border: 1px solid #f44336; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+    .stop-btn-inline:hover { background: #f44336; color: #fff; }
 
     /* Results */
     .results-empty { text-align: center; padding: 30px; color: #555; }
-    .number-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #1a1a1a; border: 1px solid #222; border-radius: 8px; margin-bottom: 6px; transition: border-color 0.15s; }
+    .number-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #1a1a1a; border: 1px solid #222; border-radius: 8px; margin-bottom: 6px; transition: border-color 0.15s, background 0.15s; cursor: pointer; position: relative; }
     .number-card:hover { border-color: #ff8c00; }
+    .number-card:active { background: #2a2a2a; }
+    .number-card.top-result { border: 1.5px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.15); background: linear-gradient(135deg, #1f1a08, #1a1a1a); }
+    .number-card .top-ribbon { position: absolute; top: -7px; left: 10px; font-size: 9px; padding: 1px 6px; background: #ffd700; color: #000; font-weight: 700; border-radius: 3px; letter-spacing: 0.5px; }
     .number-card .num { font-size: 16px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 1px; }
+    .number-card .num-intl { font-size: 10px; color: #555; font-family: 'SF Mono', 'Fira Code', monospace; margin-top: 1px; }
+    .number-card.copied { background: #16331a; border-color: #4caf50; }
+    .number-card.copied::after { content: 'Copied'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #4caf50; font-size: 11px; font-weight: 600; background: #0a0a0a; padding: 2px 6px; border-radius: 4px; }
+    .fav-btn { background: none; border: none; color: #3a3a3a; font-size: 18px; cursor: pointer; padding: 0 6px; line-height: 1; transition: color 0.15s, transform 0.15s; align-self: center; }
+    .fav-btn:hover { color: #888; transform: scale(1.15); }
+    .fav-btn.active { color: #ffd700; }
+    .fav-btn.active:hover { color: #ffeb70; }
     .number-card .meta { text-align: right; }
     .number-card .score { font-size: 12px; color: #ff8c00; font-weight: 600; }
     .number-card .found-date { font-size: 10px; color: #555; margin-top: 2px; }
@@ -90,6 +107,10 @@
     .tag.sequence { background: rgba(76,175,80,0.2); color: #4caf50; }
     .tag.round { background: rgba(33,150,243,0.2); color: #64b5f6; }
     .tag.aabb { background: rgba(255,99,132,0.2); color: #ff7b93; }
+    .tag.abab { background: rgba(99,179,237,0.22); color: #63b3ed; }
+    .tag.mirror { background: rgba(160,140,255,0.22); color: #a08cff; }
+    .tag.abcabc { background: rgba(255,215,0,0.25); color: #ffd700; }
+    .tag.heavy { background: rgba(255,170,80,0.2); color: #ffaa50; }
     .tag.pair { background: rgba(255,255,255,0.08); color: #aaa; }
     .tag.search { background: rgba(255,140,0,0.15); color: #ff8c00; }
 
@@ -120,6 +141,10 @@
     /* Results actions */
     .results-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid #222; }
     .results-stats { font-size: 11px; color: #666; margin-bottom: 8px; }
+    .more-toggle { width: 100%; padding: 6px; margin-top: 4px; background: none; border: none; color: #888; font-size: 11px; cursor: pointer; }
+    .more-toggle:hover { color: #ccc; }
+    .more-actions.hidden { display: none; }
+    .more-actions { margin-top: 4px; }
 
     /* Session refresh */
     .refresh-btn { width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #f44336; color: #f44336; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; margin-top: 8px; }
@@ -132,8 +157,7 @@
 </head>
 <body>
   <div class="header">
-    <h1># Number Hunter</h1>
-    <p>Find memorable amaysim numbers</p>
+    <h1>Number Hunter</h1>
   </div>
 
   <div class="status-bar">
@@ -143,17 +167,37 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="search">Search</button>
-    <button class="tab" data-tab="searches">Searches</button>
+    <button class="tab" data-tab="searches">Recent Searches</button>
     <button class="tab" data-tab="results">All Numbers</button>
   </div>
 
   <!-- SEARCH TAB -->
   <div class="panel active" id="panel-search">
-    <!-- Connect box (shown when not connected) -->
+    <!-- First-run welcome card -->
+    <div class="welcome-box hidden" id="welcomeBox">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div>
+          <strong style="color:#ff8c00; font-size:12px;">Welcome to Number Hunter</strong>
+          <p style="font-size:11px; color:#bbb; margin-top:4px; line-height:1.5;">
+            Setup is automatic. Once the orange status bar disappears, you're ready.
+            Try a digit pattern (e.g. <code style="color:#ff8c00;">2222</code>) or run a Pattern Scan below.
+            All numbers found appear in the <strong>All Numbers</strong> tab.
+          </p>
+        </div>
+        <button id="dismissWelcome" style="background:none; border:none; color:#666; cursor:pointer; font-size:16px; padding:0; line-height:1;" title="Dismiss">×</button>
+      </div>
+    </div>
+
+    <!-- Connect box (shown when auto-setup fails) -->
     <div class="connect-box hidden" id="connectBox">
-      <strong style="color:#ff8c00;">Connect to amaysim:</strong><br>
-      <span style="color:#999;">Paste your session ID below:</span>
-      <div class="search-row" style="margin-top:6px; margin-bottom:0;">
+      <strong style="color:#ff8c00;">Auto-setup didn't work.</strong>
+      <p style="color:#bbb; margin-top:4px; line-height:1.5;">
+        To connect manually:
+        <br>1. Open <strong>amaysim.com.au</strong> and add any SIM plan to cart.
+        <br>2. In DevTools (F12) → Application → Session Storage → amaysim.com.au, copy the session ID.
+        <br>3. Paste it below and click Connect.
+      </p>
+      <div class="search-row" style="margin-top:8px; margin-bottom:0;">
         <input type="text" id="manualSessionInput" placeholder="Paste session ID here" style="font-size:11px;">
         <button id="connectBtn" style="padding:8px 12px; background:#ff8c00; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;">Connect</button>
       </div>
@@ -165,22 +209,40 @@
     </div>
     <div class="converted-hint" id="convertedHint"></div>
 
-    <div class="section-label">Pattern Scans</div>
+    <button class="scan-btn" id="findBest" style="margin-bottom:10px;">Find Best Number</button>
+
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Pattern Scans</span>
+      <div style="display:flex; gap:10px; text-transform:none; letter-spacing:0; font-weight:400; font-size:11px; color:#aaa;">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;" title="Run each filter 3 times to get more numbers per session">
+          <input type="checkbox" id="deepScan" style="accent-color:#ff8c00; cursor:pointer;">
+          Deep
+        </label>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;" title="Rotate through 3 fresh sessions for wider number coverage (3× longer)">
+          <input type="checkbox" id="rotateSessions" style="accent-color:#ff8c00; cursor:pointer;">
+          3× sessions
+        </label>
+      </div>
+    </div>
     <div class="pattern-grid">
       <button class="preset-btn" id="scanAAA"><span class="label">Triples</span><span class="desc">AAA (e.g. 333)</span></button>
       <button class="preset-btn" id="scanAAAA"><span class="label">Quads</span><span class="desc">AAAA (e.g. 3333)</span></button>
       <button class="preset-btn" id="scanAAAAA"><span class="label">Quints</span><span class="desc">AAAAA (e.g. 33333)</span></button>
       <button class="preset-btn" id="scanDoubleDoubles"><span class="label">All Doubles</span><span class="desc">AABB, AABBCC, AABBCCDD</span></button>
       <button class="preset-btn" id="scanTripleTriples"><span class="label">AAABBB</span><span class="desc">Triple + triple pairs</span></button>
+      <button class="preset-btn" id="scanABAB"><span class="label">ABAB</span><span class="desc">Alternating (e.g. 1212)</span></button>
+      <button class="preset-btn" id="scanMirrors"><span class="label">Mirrors</span><span class="desc">ABBA (e.g. 1221)</span></button>
       <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>
-      <button class="preset-btn full-width" id="scanAll"><span class="label">Full Scan</span><span class="desc">All patterns above</span></button>
+      <button class="preset-btn" id="scanRoundHundreds"><span class="label">Round 00</span><span class="desc">Ends in 100, 200, ...</span></button>
     </div>
 
     <div class="progress" id="scanProgress">
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-text" id="progressText">Scanning...</div>
+      <div class="progress-row">
+        <div class="progress-text" id="progressText">Scanning...</div>
+        <button id="stopScan" class="stop-btn-inline">Stop</button>
+      </div>
     </div>
-    <button class="scan-btn" id="stopScan" style="display:none; background:#f44336;">Stop Scan</button>
 
     <div id="searchResults"></div>
   </div>
@@ -200,7 +262,8 @@
   <div class="panel" id="panel-results">
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="free">Free only</button>
+      <button class="filter-btn" data-filter="favourites">★ Favs</button>
+      <button class="filter-btn" data-filter="free">Free</button>
       <button class="filter-btn" data-filter="premium">Premium</button>
       <button class="filter-btn" id="clearResults" style="margin-left:auto; border-color:#f44336; color:#f44336;">Clear</button>
     </div>
@@ -210,6 +273,7 @@
         <option value="score">Score</option>
         <option value="recent">Most recent</option>
       </select>
+      <span style="font-size:10px; color:#555; margin-left:auto;" title="0–30 average · 60+ rare · 90+ exceptional">score guide</span>
     </div>
     <div class="results-count" id="resultsCount"></div>
     <div id="resultsList">
@@ -221,11 +285,14 @@
         <strong>This session:</strong> <span id="totalFound">0</span> numbers |
         <strong>All-time:</strong> <span id="totalLogged">0</span> across <span id="totalSessions">0</span> sessions
       </div>
-      <button class="scan-btn secondary" id="exportCSV">Export All Numbers (CSV)</button>
-      <button class="scan-btn secondary" id="exportJSON" style="margin-top:4px">Export as JSON</button>
-      <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
-      <button class="refresh-btn" id="refreshSession" style="margin-top:12px">New Session (Fresh Numbers)</button>
-      <button class="refresh-btn" id="clearHistory" style="margin-top:4px; border-color:#888; color:#888">Clear All History</button>
+      <button class="refresh-btn" id="refreshSession">New Session (Fresh Numbers)</button>
+      <button class="more-toggle" id="moreToggle">More actions ▾</button>
+      <div class="more-actions hidden" id="moreActions">
+        <button class="scan-btn secondary" id="exportCSV">Export as CSV</button>
+        <button class="scan-btn secondary" id="exportJSON" style="margin-top:4px">Export as JSON</button>
+        <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
+        <button class="refresh-btn" id="clearHistory" style="margin-top:8px; border-color:#888; color:#888">Clear All History</button>
+      </div>
     </div>
   </div>
 

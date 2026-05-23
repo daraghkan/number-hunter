@@ -16,11 +16,12 @@
   let currentFilter = 'all';
   let currentSort = 'score';
   let searches = []; // log of each search performed
+  let favourites = []; // saved number entries the user has starred
+  let favSet = new Set(); // O(1) lookup for star state
 
   // Plan to add to cart (amaysim's cheapest)
   const DEFAULT_PLAN = 'unlimited-15gb';
-  const STORE_ID = 'website';
-  const CHANNEL = 'online';
+  const CART_URL = `/mobile/cart/${DEFAULT_PLAN}?storeId=website&channel=online&action=shop`;
 
   // --- T9 keypad mapping ---
   const LETTER_TO_DIGIT = {
@@ -141,6 +142,31 @@
     const m = d.match(/(\d)\1(\d)\2/);
     return !!m && m[1] !== m[2];
   }
+  // ABAB: alternating two distinct digits (e.g. 1212)
+  function hasABAB(d) {
+    const m = d.match(/(\d)(\d)\1\2/);
+    return !!m && m[1] !== m[2];
+  }
+  // Mirror (ABBA): 4-char palindrome of two distinct digits (e.g. 1221)
+  function hasMirror(d) {
+    const m = d.match(/(\d)(\d)\2\1/);
+    return !!m && m[1] !== m[2];
+  }
+  // ABCABC: a 3-digit block repeated, with the three digits all distinct (e.g. 123123)
+  function hasABCABC(d) {
+    const m = d.match(/(\d)(\d)(\d)\1\2\3/);
+    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+  }
+  // Dominant digit: any single digit appearing 4+ times anywhere in d
+  function dominantDigit(d) {
+    const counts = {};
+    for (const ch of d) counts[ch] = (counts[ch] || 0) + 1;
+    let best = null;
+    for (const [digit, count] of Object.entries(counts)) {
+      if (count >= 4 && (!best || count > best.count)) best = { digit, count };
+    }
+    return best;
+  }
 
   // Find the longest ascending or descending run of consecutive digits (3+)
   function findSequence(d) {
@@ -186,22 +212,47 @@
       tags.push({ label: 'AABBB', cls: 'aabbb' });
     }
 
+    // ABCABC: repeating 3-digit block (e.g. 123123) — high priority, distinct from sequences
+    if (hasABCABC(d)) {
+      tags.push({ label: 'ABCABC', cls: 'abcabc' });
+    }
+
     // Sequence (3+ ascending or descending consecutive digits) — include digits in label
     const seq = findSequence(d);
     if (seq) {
       tags.push({ label: `Seq ${seq}`, cls: 'sequence' });
     }
 
-    // Round ending (only if nothing else already tags this)
+    // Round ending (covers 0000, 000, X00 where X != 0, and 500)
     const hasRepeat = tags.some(t => ['quint','quad','triple'].includes(t.cls));
-    if (!hasRepeat && (d.endsWith('0000') || d.endsWith('000') || d.endsWith('500'))) {
-      tags.push({ label: 'Round', cls: 'round' });
+    if (!hasRepeat) {
+      if (d.endsWith('0000')) tags.push({ label: 'Round 0000', cls: 'round' });
+      else if (d.endsWith('000')) tags.push({ label: 'Round 000', cls: 'round' });
+      else if (d.endsWith('500')) tags.push({ label: 'Round 500', cls: 'round' });
+      else if (/[1-9]00$/.test(d)) tags.push({ label: `Round ${d.slice(-3)}`, cls: 'round' });
+    }
+
+    // ABAB alternating (e.g. 1212)
+    const hasGroupedOrAltOrMirror = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad','abcabc'].includes(t.cls));
+    if (!hasGroupedOrAltOrMirror && hasABAB(d)) {
+      tags.push({ label: 'ABAB', cls: 'abab' });
+    }
+
+    // Mirror (ABBA): 4-char palindrome (e.g. 1221)
+    if (!hasGroupedOrAltOrMirror && !tags.some(t => t.cls === 'abab') && hasMirror(d)) {
+      tags.push({ label: 'Mirror', cls: 'mirror' });
     }
 
     // AABB (fallback if no larger grouped pattern matched)
-    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad'].includes(t.cls));
+    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad','abab','mirror'].includes(t.cls));
     if (!hasGrouped && hasAABB(d)) {
       tags.push({ label: 'AABB', cls: 'aabb' });
+    }
+
+    // Heavy single-digit dominance (e.g. five 8s scattered across d)
+    const dom = dominantDigit(d);
+    if (dom && !tags.some(t => ['quint','quad','triple'].includes(t.cls))) {
+      tags.push({ label: `Heavy ${dom.digit} ×${dom.count}`, cls: 'heavy' });
     }
 
     // Pair fallback (only if nothing else classified it)
@@ -212,7 +263,7 @@
       }
     }
 
-    return tags.slice(0, 2);
+    return tags.slice(0, 4);
   }
 
   function tagsHtml(tags) {
@@ -232,50 +283,68 @@
       if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) score += 10;
       if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) score += 10;
     }
-    if (d.endsWith('000')) score += 15;
+    if (hasABCABC(d)) score += 25;
+    if (hasABAB(d)) score += 8;
+    if (hasMirror(d)) score += 8;
+    const dom = dominantDigit(d);
+    if (dom) score += (dom.count - 3) * 8;
     if (d.endsWith('0000')) score += 30;
+    else if (d.endsWith('000')) score += 15;
+    else if (/[1-9]00$/.test(d)) score += 8;
     return score;
   }
 
   // --- Create a fresh session ---
+  // Must be called with sessionId == null so apiCall sends no authorization header.
   async function createSession() {
-    const data = await apiCall({ query: '{ sessionId }' }, 'none');
+    const data = await apiCall({ query: '{ sessionId }' });
     const sid = data?.data?.sessionId;
-    if (!sid) throw new Error('Failed to create session');
+    if (!sid) throw new Error('Failed to create session (API returned no sessionId)');
     return sid;
   }
 
   // --- Add plan to cart ---
   async function setupCart() {
-    // Navigate cart to get a plan loaded
     const cartQuery = `{ cart { items { ... on MobilePlanCartItem { id plan { id name } } } } }`;
     const cartData = await apiCall({ query: cartQuery });
+    console.log('[Number Hunter] initial cart response:', cartData);
 
     const existingPlan = cartData?.data?.cart?.items?.[0]?.plan;
     if (existingPlan?.id) {
       return existingPlan;
     }
 
-    // Try to add plan via addMobilePlanToCart
-    const addQuery = `mutation {
-      addMobilePlanToCart(input: { planId: "${DEFAULT_PLAN}", storeId: "${STORE_ID}", channel: "${CHANNEL}" }) {
+    const addQuery = `mutation AddToCart($planId: ID!, $cartUrl: String!) {
+      updateCartItemQuantity(planId: $planId, quantity: 1, cartUrl: $cartUrl) {
         items { ... on MobilePlanCartItem { id plan { id name } } }
       }
     }`;
+    let addData;
     try {
-      const addData = await apiCall({ query: addQuery });
-      const added = addData?.data?.addMobilePlanToCart?.items?.[0]?.plan;
-      if (added?.id) return added;
+      addData = await apiCall({
+        query: addQuery,
+        variables: { planId: DEFAULT_PLAN, cartUrl: CART_URL },
+        operationName: 'AddToCart'
+      });
+      console.log('[Number Hunter] updateCartItemQuantity response:', addData);
     } catch (e) {
-      // Mutation name might differ, try cart query again
+      console.warn('[Number Hunter] updateCartItemQuantity threw:', e);
     }
 
-    // Re-check cart
+    const added = addData?.data?.updateCartItemQuantity?.items?.[0]?.plan;
+    if (added?.id) return added;
+
     const recheck = await apiCall({ query: cartQuery });
+    console.log('[Number Hunter] cart recheck response:', recheck);
     const plan = recheck?.data?.cart?.items?.[0]?.plan;
     if (plan?.id) return plan;
 
-    throw new Error('No plan in cart. Open amaysim.com.au and add a plan to cart first.');
+    const gqlErr = addData?.errors?.[0]?.message;
+    throw new Error(
+      gqlErr
+        ? `updateCartItemQuantity failed: ${gqlErr}`
+        : `updateCartItemQuantity returned no plan`
+    );
   }
 
   // --- Query numbers ---
@@ -323,22 +392,33 @@
     setStatus('yellow', 'Connecting...');
 
     // Load history
-    const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches']);
+    const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches', 'scanState', 'favourites']);
     if (saved.historyLog) { historyLog = saved.historyLog; $('totalLogged').textContent = historyLog.length; }
     if (saved.sessionCount) $('totalSessions').textContent = saved.sessionCount;
     if (saved.results) { allResults = saved.results; $('totalFound').textContent = allResults.length; }
     if (saved.searches) { searches = saved.searches; }
+    if (saved.favourites) { favourites = saved.favourites; favSet = new Set(favourites.map(f => f.number)); }
+
+    // Resume scan UI if a scan is already running in the background
+    if (saved.scanState && saved.scanState.running) {
+      enterScanningUI();
+      applyScanState(saved.scanState);
+    }
+
+    // First-run welcome card
+    const { welcomeDismissed } = await chrome.storage.local.get('welcomeDismissed');
+    if (!welcomeDismissed) $('welcomeBox').classList.remove('hidden');
 
     // 1. Try saved session
     if (saved.sessionId) {
-      setStatus('yellow', 'Checking saved session...');
+      setStatus('yellow', 'Reconnecting...');
       try {
         if (await tryConnect(saved.sessionId)) return;
       } catch (e) { /* expired */ }
     }
 
     // 2. Try auto-detect from amaysim page
-    setStatus('yellow', 'Detecting from page...');
+    setStatus('yellow', 'Looking for amaysim session...');
     try {
       const resp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ type: 'GET_PAGE_SESSION' }, r => {
@@ -357,8 +437,30 @@
       // No amaysim tab or injection failed
     }
 
-    // 3. Fall back to manual connect
+    // 3. Auto-bootstrap a fresh session + cart via the API (no amaysim tab needed)
+    // Reset any stale sessionId left over from failed steps 1/2 so createSession
+    // sends no authorization header.
+    sessionId = null;
+    setStatus('yellow', 'Setting up your session...');
+    let bootstrapError = null;
+    try {
+      const sid = await createSession();
+      sessionId = sid;
+      setStatus('yellow', 'Adding a SIM plan to cart...');
+      await setupCart();
+      setStatus('yellow', 'Almost ready...');
+      if (await tryConnect(sid)) return;
+      bootstrapError = 'Cart verification returned no plan';
+    } catch (e) {
+      bootstrapError = e.message;
+      console.warn('[Number Hunter] Auto-bootstrap failed:', e);
+    }
+
+    // 4. Manual connect (only if everything else failed). Surface the real reason.
     showConnectBox();
+    if (bootstrapError) {
+      planInfo.textContent = `Auto-setup failed: ${bootstrapError}`;
+    }
   }
 
   function setStatus(color, text) {
@@ -370,6 +472,12 @@
       statusText.textContent = text;
     }
   }
+
+  // --- Dismiss welcome card ---
+  $('dismissWelcome')?.addEventListener('click', async () => {
+    $('welcomeBox').classList.add('hidden');
+    await chrome.storage.local.set({ welcomeDismissed: true });
+  });
 
   // --- Manual session connect ---
   $('connectBtn').addEventListener('click', async () => {
@@ -469,23 +577,33 @@
 
   // --- Render results ---
   function renderResults() {
-    let filtered = allResults;
-    if (currentFilter === 'free') filtered = allResults.filter(r => !r.isPremium);
-    if (currentFilter === 'premium') filtered = allResults.filter(r => r.isPremium);
+    let source = allResults;
+    if (currentFilter === 'favourites') source = favourites;
+
+    let filtered = source;
+    if (currentFilter === 'free') filtered = source.filter(r => !r.isPremium);
+    if (currentFilter === 'premium') filtered = source.filter(r => r.isPremium);
 
     filtered = [...filtered].sort((a, b) => {
-      if (currentSort === 'recent') return b.foundAt - a.foundAt;
+      if (currentSort === 'recent') return (b.favouritedAt || b.foundAt) - (a.favouritedAt || a.foundAt);
       return b.score - a.score;
     });
 
-    resultsCount.textContent = `${filtered.length} numbers (${allResults.filter(r=>!r.isPremium).length} free, ${allResults.filter(r=>r.isPremium).length} premium)`;
+    if (currentFilter === 'favourites') {
+      resultsCount.textContent = `${filtered.length} favourite${filtered.length === 1 ? '' : 's'}`;
+    } else {
+      resultsCount.textContent = `${filtered.length} numbers (${allResults.filter(r=>!r.isPremium).length} free, ${allResults.filter(r=>r.isPremium).length} premium)`;
+    }
 
     if (filtered.length === 0) {
-      resultsList.innerHTML = '<div class="results-empty">No results yet. Run a search or scan first.</div>';
+      const msg = currentFilter === 'favourites'
+        ? 'No favourites yet. Tap ☆ on any number to save it here.'
+        : 'No results yet. Run a search or scan first.';
+      resultsList.innerHTML = `<div class="results-empty">${msg}</div>`;
       return;
     }
 
-    resultsList.innerHTML = filtered.slice(0, 100).map(renderNumberCard).join('');
+    resultsList.innerHTML = filtered.slice(0, 100).map((r, i) => renderNumberCard(r, { top: i === 0 && currentSort === 'score' && r.score > 0 && currentFilter !== 'favourites' })).join('');
   }
 
   function switchToResults() {
@@ -497,17 +615,22 @@
   }
 
   // --- Shared number card renderer ---
-  function renderNumberCard(r) {
+  function renderNumberCard(r, opts = {}) {
     const tags = getNumberTags(r.number);
+    const intl = '+61 ' + r.number.slice(1, 4) + ' ' + r.number.slice(4, 7) + ' ' + r.number.slice(7);
+    const isFav = favSet.has(r.number);
     return `
-      <div class="number-card">
+      <div class="number-card${opts.top ? ' top-result' : ''}" data-number="${r.number}" title="Click to copy">
+        ${opts.top ? '<span class="top-ribbon">TOP SCORE</span>' : ''}
         <div>
           <div class="num">${r.formatted}</div>
+          <div class="num-intl">${intl}</div>
           <div class="tags">
             ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
             ${r.searchTerm ? `<span class="tag search">${r.searchTerm}</span>` : ''}
           </div>
         </div>
+        <button class="fav-btn${isFav ? ' active' : ''}" data-fav="${r.number}" title="${isFav ? 'Remove from favourites' : 'Save to favourites'}" aria-pressed="${isFav}">${isFav ? '★' : '☆'}</button>
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
@@ -515,6 +638,40 @@
         </div>
       </div>`;
   }
+
+  async function toggleFavourite(number) {
+    if (favSet.has(number)) {
+      favSet.delete(number);
+      favourites = favourites.filter(f => f.number !== number);
+    } else {
+      const entry = allResults.find(r => r.number === number) || historyLog.find(r => r.number === number);
+      if (!entry) return;
+      favSet.add(number);
+      favourites.unshift({ ...entry, favouritedAt: Date.now() });
+    }
+    await chrome.storage.local.set({ favourites });
+    renderResults();
+    renderSearches();
+  }
+
+  // Click delegation: star button toggles fav, otherwise copy number
+  document.body.addEventListener('click', async (e) => {
+    const favBtn = e.target.closest('.fav-btn');
+    if (favBtn) {
+      e.stopPropagation();
+      await toggleFavourite(favBtn.dataset.fav);
+      return;
+    }
+    const card = e.target.closest('.number-card');
+    if (!card || !card.dataset.number) return;
+    try {
+      await navigator.clipboard.writeText(card.dataset.number);
+      card.classList.add('copied');
+      setTimeout(() => card.classList.remove('copied'), 900);
+    } catch (err) {
+      console.warn('Clipboard write failed:', err);
+    }
+  });
 
   // --- Search logging and rendering ---
   async function logSearch(entry) {
@@ -616,24 +773,7 @@
 
     // If 1-5 digits, do a single search. If longer, do a multi-pattern scan.
     if (digits.length <= 5) {
-      searchBtn.disabled = true;
-      searchBtn.textContent = '...';
-      try {
-        const nums = await queryNumbers(digits);
-        if (searchTerm) nums.forEach(n => { if (n.number.includes(digits)) n.searchTerm = searchTerm; });
-        addResults(nums);
-        const matches = nums.filter(n => n.number.includes(digits)).map(n => n.number);
-        await logSearch({ input: searchTerm || digits, digits, matches, timestamp: Date.now() });
-        if (nums.length === 0) {
-          searchResults.innerHTML = '<div class="results-empty" style="padding:15px">No numbers found for this pattern.</div>';
-        } else {
-          switchToResults();
-        }
-      } catch (e) {
-        searchResults.innerHTML = `<div class="results-empty" style="padding:15px;color:#f44336">${e.message}</div>`;
-      }
-      searchBtn.disabled = false;
-      searchBtn.textContent = 'Search';
+      await runBulkScan([digits], searchTerm, digits, searchTerm || digits);
     } else {
       // Longer input: generate sub-patterns and bulk scan
       await runBulkScan(generateSubPatterns(digits), searchTerm, digits, searchTerm || digits);
@@ -654,61 +794,94 @@
     return [...new Set(pats)];
   }
 
-  // --- Bulk Scan ---
-  async function runBulkScan(patterns, searchTerm, searchDigits, label) {
+  // --- Bulk Scan (delegated to background.js so it survives popup close) ---
+  async function runBulkScan(patterns, searchTerm, searchDigits, label, opts = {}) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
-    scanning = true;
-    stopRequested = false;
-    const total = patterns.length;
-    const matchedNumbers = new Set();
+    const repeats = opts.repeats ?? ($('deepScan')?.checked ? 3 : 1);
+    const sessions = opts.sessions ?? ($('rotateSessions')?.checked ? 3 : 1);
+    enterScanningUI();
+    await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'START_SCAN',
+        opts: { patterns, repeats, sessions, label, searchTerm, searchDigits, planId, sessionId }
+      }, resp => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(resp);
+      });
+    });
+  }
 
+  function enterScanningUI() {
+    scanning = true;
     scanProgress.classList.add('active');
     stopScanBtn.style.display = 'block';
     document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = true);
+  }
 
-    let scanned = 0;
-    let found = 0;
-
-    for (const pat of patterns) {
-      if (stopRequested) break;
-      try {
-        const nums = await queryNumbers(pat);
-        if (searchTerm && searchDigits) nums.forEach(n => { if (n.number.includes(searchDigits)) n.searchTerm = searchTerm; });
-        if (searchDigits) {
-          nums.forEach(n => { if (n.number.includes(searchDigits)) matchedNumbers.add(n.number); });
-        } else {
-          nums.forEach(n => matchedNumbers.add(n.number));
-        }
-        const added = addResults(nums);
-        found += added;
-      } catch (e) { /* skip */ }
-
-      scanned++;
-      const pct = Math.round((scanned / total) * 100);
-      progressFill.style.width = pct + '%';
-      progressText.textContent = `${scanned}/${total} patterns | ${found} new numbers found`;
-      await new Promise(r => setTimeout(r, 300));
-    }
-
+  function exitScanningUI(finalText) {
     scanning = false;
     stopScanBtn.style.display = 'none';
     document.querySelectorAll('.preset-btn, #searchBtn').forEach(b => b.disabled = false);
-    progressText.textContent = `Done! ${found} new numbers across ${scanned} patterns.`;
-
-    if (label) {
-      await logSearch({
-        input: label,
-        digits: searchDigits || null,
-        matches: [...matchedNumbers],
-        timestamp: Date.now()
-      });
-    }
-
-    switchToResults();
+    if (finalText) progressText.textContent = finalText;
   }
 
-  stopScanBtn.addEventListener('click', () => { stopRequested = true; });
+  function applyScanState(s) {
+    if (!s) return;
+    const pct = s.total ? Math.round((s.scanned / s.total) * 100) : 0;
+    progressFill.style.width = pct + '%';
+    const sessionLabel = s.sessionsTotal > 1 ? `session ${s.sessionsDone || 1}/${s.sessionsTotal} · ` : '';
+    const passLabel = s.repeats > 1 ? ` (pass ${(s.repIdx ?? 0) + 1}/${s.repeats})` : '';
+    const remaining = Math.max(0, s.total - s.scanned);
+    const etaSec = Math.round(remaining * 0.7);
+    const eta = etaSec > 60 ? `~${Math.ceil(etaSec / 60)} min left` : etaSec > 5 ? `~${etaSec}s left` : 'finishing...';
+    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${s.found} new · ${eta}`;
+  }
+
+  // Listen for background scan updates
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (changes.scanState) {
+      const next = changes.scanState.newValue;
+      const prev = changes.scanState.oldValue;
+      if (next) {
+        if (!scanning) enterScanningUI();
+        applyScanState(next);
+      } else if (prev) {
+        // scanState was cleared — scan finished
+        const summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+        exitScanningUI(summary);
+        // Refresh results from storage and switch to results tab
+        chrome.storage.local.get(['results', 'searches'], data => {
+          if (data.results) { allResults = data.results; $('totalFound').textContent = allResults.length; renderResults(); }
+          if (data.searches) { searches = data.searches; renderSearches(); }
+          switchToResults();
+        });
+      }
+    }
+    if (changes.results) {
+      allResults = changes.results.newValue || [];
+      $('totalFound').textContent = allResults.length;
+      renderResults();
+    }
+    if (changes.historyLog) {
+      historyLog = changes.historyLog.newValue || [];
+      $('totalLogged').textContent = historyLog.length;
+    }
+    if (changes.searches) {
+      searches = changes.searches.newValue || [];
+      renderSearches();
+    }
+    if (changes.favourites) {
+      favourites = changes.favourites.newValue || [];
+      favSet = new Set(favourites.map(f => f.number));
+      renderResults();
+    }
+  });
+
+  stopScanBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'STOP_SCAN' });
+  });
 
   // --- Scan presets ---
   // Run one of the repeat-digit scans (3, 4, or 5 of the same digit)
@@ -763,21 +936,47 @@
     runBulkScan(sequencePatterns(), null, null, 'Sequences scan');
   });
 
-  $('scanAll').addEventListener('click', () => {
+  function abPatterns() {
     const pats = [];
-    // Triples + quads + quints
+    for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${b}${a}${b}`);
+    return pats;
+  }
+  function mirrorPatterns() {
+    const pats = [];
+    for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${b}${b}${a}`);
+    return pats;
+  }
+  function roundHundredsPatterns() {
+    const pats = [];
+    for (let n = 1; n <= 9; n++) pats.push(`${n}00`);
+    return pats;
+  }
+
+  $('scanABAB').addEventListener('click', () => runBulkScan(abPatterns(), null, null, 'ABAB scan'));
+  $('scanMirrors').addEventListener('click', () => runBulkScan(mirrorPatterns(), null, null, 'Mirrors scan'));
+  $('scanRoundHundreds').addEventListener('click', () => runBulkScan(roundHundredsPatterns(), null, null, 'Round 00 scan'));
+
+  function fullScanPatterns() {
+    const pats = [];
     for (let d = 0; d <= 9; d++) {
       pats.push(`${d}${d}${d}`);
       pats.push(`${d}${d}${d}${d}`);
       pats.push(`${d}${d}${d}${d}${d}`);
     }
-    // AABB pairs
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${b}${b}`);
-    // AAABBB prefixes (5-char AAABB)
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
-    // Sequences
+    pats.push(...abPatterns());
+    pats.push(...mirrorPatterns());
     pats.push(...sequencePatterns());
-    runBulkScan([...new Set(pats)], null, null, 'Full scan');
+    pats.push(...roundHundredsPatterns());
+    return [...new Set(pats)];
+  }
+
+  // One-click: deep full scan, then jump to All Numbers sorted by score
+  $('findBest').addEventListener('click', async () => {
+    currentSort = 'score';
+    $('sortSelect').value = 'score';
+    await runBulkScan(fullScanPatterns(), null, null, 'Find Best Number', { repeats: 3 });
   });
 
   // --- Export CSV ---
@@ -837,6 +1036,12 @@
     await chrome.storage.local.set({ results: [] });
     $('totalFound').textContent = '0';
     renderResults();
+  });
+
+  $('moreToggle').addEventListener('click', () => {
+    const m = $('moreActions');
+    const isHidden = m.classList.toggle('hidden');
+    $('moreToggle').textContent = isHidden ? 'More actions ▾' : 'More actions ▴';
   });
 
   $('clearSearches').addEventListener('click', async () => {
