@@ -1112,13 +1112,6 @@
 
   $('closeHistory').addEventListener('click', () => { $('historyOverlay').style.display = 'none'; });
 
-  $('clearResults').addEventListener('click', async () => {
-    allResults = [];
-    await chrome.storage.local.set({ results: [] });
-    $('totalFound').textContent = '0';
-    renderResults();
-  });
-
   $('moreToggle').addEventListener('click', () => {
     const m = $('moreActions');
     const isHidden = m.classList.toggle('hidden');
