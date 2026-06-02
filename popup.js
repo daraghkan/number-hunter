@@ -798,8 +798,10 @@
   async function runBulkScan(patterns, searchTerm, searchDigits, label, opts = {}) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
-    const repeats = opts.repeats ?? ($('deepScan')?.checked ? 3 : 1);
-    const sessions = opts.sessions ?? ($('rotateSessions')?.checked ? 3 : 1);
+    // Deep (3 passes per filter) + 3-session rotation are now the default
+    // method for the widest number coverage.
+    const repeats = opts.repeats ?? 3;
+    const sessions = opts.sessions ?? 3;
     enterScanningUI();
     await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
