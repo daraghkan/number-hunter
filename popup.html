@@ -25,11 +25,6 @@
     .panel { display: none; padding: 16px; max-height: 400px; overflow-y: auto; }
     .panel.active { display: block; }
 
-    /* Welcome box (first run) */
-    .welcome-box { padding: 10px 12px; background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; margin-bottom: 12px; }
-    .welcome-box.hidden { display: none; }
-    .welcome-box code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-family: 'SF Mono', 'Fira Code', monospace; }
-
     /* Connect box */
     .connect-box { padding: 10px; background: #1a1200; border: 1px solid #ff8c00; border-radius: 6px; font-size: 11px; margin-bottom: 12px; }
     .connect-box.hidden { display: none; }
@@ -181,23 +176,6 @@
 
   <!-- SEARCH TAB -->
   <div class="panel active" id="panel-search">
-    <!-- First-run welcome card -->
-    <div class="welcome-box hidden" id="welcomeBox">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-        <div>
-          <strong style="color:#ff8c00; font-size:12px;">Welcome to Number Hunter</strong>
-          <p style="font-size:11px; color:#bbb; margin-top:4px; line-height:1.5;">
-            Setup is automatic. Once the orange status bar disappears, you're ready.
-            Try a digit pattern (e.g. <code style="color:#ff8c00;">2222</code>) or run a Pattern Scan below.
-            All numbers found appear in the <strong>All Numbers</strong> tab.
-            Once you find one you like, copy it and select it on amaysim via
-            <strong>"Pick a new number"</strong> — see the steps in the All Numbers tab.
-          </p>
-        </div>
-        <button id="dismissWelcome" style="background:none; border:none; color:#666; cursor:pointer; font-size:16px; padding:0; line-height:1;" title="Dismiss">×</button>
-      </div>
-    </div>
-
     <!-- Connect box (shown when auto-setup fails) -->
     <div class="connect-box hidden" id="connectBox">
       <strong style="color:#ff8c00;">Auto-setup didn't work.</strong>

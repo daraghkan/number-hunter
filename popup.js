@@ -389,7 +389,7 @@
 
   // --- Initialize ---
   async function init() {
-    setStatus('yellow', 'Connecting...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
 
     // Load history
     const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches', 'scanState', 'favourites']);
@@ -405,20 +405,16 @@
       applyScanState(saved.scanState);
     }
 
-    // First-run welcome card
-    const { welcomeDismissed } = await chrome.storage.local.get('welcomeDismissed');
-    if (!welcomeDismissed) $('welcomeBox').classList.remove('hidden');
-
     // 1. Try saved session
     if (saved.sessionId) {
-      setStatus('yellow', 'Reconnecting...');
+      setStatus('yellow', 'Setting up — please wait, no action needed…');
       try {
         if (await tryConnect(saved.sessionId)) return;
       } catch (e) { /* expired */ }
     }
 
     // 2. Try auto-detect from amaysim page
-    setStatus('yellow', 'Looking for amaysim session...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
     try {
       const resp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ type: 'GET_PAGE_SESSION' }, r => {
@@ -428,7 +424,7 @@
         });
       });
       if (resp.sessionId) {
-        setStatus('yellow', 'Found session, connecting...');
+        setStatus('yellow', 'Setting up — please wait, no action needed…');
         try {
           if (await tryConnect(resp.sessionId)) return;
         } catch (e) { /* no plan in cart */ }
@@ -441,14 +437,14 @@
     // Reset any stale sessionId left over from failed steps 1/2 so createSession
     // sends no authorization header.
     sessionId = null;
-    setStatus('yellow', 'Setting up your session...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
     let bootstrapError = null;
     try {
       const sid = await createSession();
       sessionId = sid;
-      setStatus('yellow', 'Adding a SIM plan to cart...');
+      setStatus('yellow', 'Setting up — please wait, no action needed…');
       await setupCart();
-      setStatus('yellow', 'Almost ready...');
+      setStatus('yellow', 'Almost ready — please wait…');
       if (await tryConnect(sid)) return;
       bootstrapError = 'Cart verification returned no plan';
     } catch (e) {
@@ -472,12 +468,6 @@
       statusText.textContent = text;
     }
   }
-
-  // --- Dismiss welcome card ---
-  $('dismissWelcome')?.addEventListener('click', async () => {
-    $('welcomeBox').classList.add('hidden');
-    await chrome.storage.local.set({ welcomeDismissed: true });
-  });
 
   // --- Manual session connect ---
   $('connectBtn').addEventListener('click', async () => {
