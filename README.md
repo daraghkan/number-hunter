@@ -17,6 +17,16 @@ Number Hunter creates its own amaysim browser session, adds a plan to the cart i
 
 No amaysim tab or manual setup is needed. If auto-setup ever fails, the extension shows a step-by-step explainer for grabbing a session ID from amaysim.com.au and pasting it in manually.
 
+### Staying up to date
+
+The header shows the installed version and a **GitHub** link. On open, the popup checks this repo's `manifest.json` and, if a newer version exists, shows an **"Update available"** banner linking to GitHub. To update, pull the latest and reload the extension:
+
+```bash
+git pull origin main
+```
+
+Then hit the reload icon on the extension in `chrome://extensions` (reloading preserves your saved numbers and favourites — a fresh reinstall does not).
+
 ### Searching
 
 Type digits or a word into the search box and hit Search. Every search runs as a background scan using the same deep, multi-session method as the Pattern Scans below (see [Deep + multi-session by default](#deep--multi-session-by-default)), so it keeps running if you close the popup and shows up in **Recent Searches**.
