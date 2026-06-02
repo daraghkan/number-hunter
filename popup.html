@@ -70,8 +70,8 @@
     .pattern-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .pattern-grid .preset-btn.full-width { grid-column: 1 / -1; }
 
-    /* Progress */
-    .progress { display: none; margin: 12px 0; position: sticky; bottom: 0; background: #0a0a0a; padding: 6px 0; z-index: 10; }
+    /* Progress — sticky footer pinned to the bottom of the popup */
+    .progress { display: none; position: sticky; bottom: 0; background: #0a0a0a; border-top: 1px solid #222; padding: 8px 16px; z-index: 50; }
     .progress.active { display: block; }
     .progress-bar { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
     .progress-fill { height: 100%; background: #ff8c00; transition: width 0.3s; width: 0%; }
@@ -236,14 +236,6 @@
       <button class="preset-btn" id="scanRoundHundreds"><span class="label">Round 00</span><span class="desc">Ends in 100, 200, ...</span></button>
     </div>
 
-    <div class="progress" id="scanProgress">
-      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-row">
-        <div class="progress-text" id="progressText">Scanning...</div>
-        <button id="stopScan" class="stop-btn-inline">Stop</button>
-      </div>
-    </div>
-
     <div id="searchResults"></div>
   </div>
 
@@ -301,6 +293,15 @@
         <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
         <button class="refresh-btn" id="clearHistory" style="margin-top:8px; border-color:#888; color:#888">Clear All History</button>
       </div>
+    </div>
+  </div>
+
+  <!-- SCAN PROGRESS — pinned to the bottom of the popup across all tabs -->
+  <div class="progress" id="scanProgress">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-row">
+      <div class="progress-text" id="progressText">Scanning...</div>
+      <button id="stopScan" class="stop-btn-inline">Stop</button>
     </div>
   </div>
 
