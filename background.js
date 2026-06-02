@@ -87,6 +87,7 @@ async function startScan(opts) {
     label: opts.label || 'Scan',
     searchTerm: opts.searchTerm || null,
     searchDigits: opts.searchDigits || null,
+    matchRegex: opts.matchRegex || null,
     planId: opts.planId,
     sessionId: opts.sessionId,
     idx: 0,
@@ -141,9 +142,20 @@ async function scanStep() {
     if (scanState.searchTerm && scanState.searchDigits) {
       nums.forEach(n => { if (n.number.includes(scanState.searchDigits)) n.searchTerm = scanState.searchTerm; });
     }
+    // Some scans over-fetch with a broad API filter (e.g. AAABBB is searched
+    // via the 5-char AAABB proxy since filters cap at 5 chars). matchRegex
+    // narrows the recorded matches to numbers that truly fit the pattern,
+    // while mergeResults below still keeps every number found in the pool.
+    let matchRe = null;
+    if (scanState.matchRegex) {
+      try { matchRe = new RegExp(scanState.matchRegex); } catch (e) { matchRe = null; }
+    }
     nums.forEach(n => {
-      if (!scanState.searchDigits || n.number.includes(scanState.searchDigits)) {
-        if (!scanState.matchedNumbers.includes(n.number)) scanState.matchedNumbers.push(n.number);
+      const isMatch = matchRe
+        ? matchRe.test(n.number)
+        : (!scanState.searchDigits || n.number.includes(scanState.searchDigits));
+      if (isMatch && !scanState.matchedNumbers.includes(n.number)) {
+        scanState.matchedNumbers.push(n.number);
       }
     });
     const added = await mergeResults(nums);

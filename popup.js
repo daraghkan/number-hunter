@@ -717,6 +717,12 @@
 
     const resultsByNumber = new Map(allResults.map(r => [r.number, r]));
 
+    // Remember which cards are open so a re-render (e.g. after favouriting a
+    // number inside a card) doesn't collapse them.
+    const expandedIdx = new Set(
+      [...listEl.querySelectorAll('.search-card.expanded')].map(c => c.dataset.idx)
+    );
+
     listEl.innerHTML = searches.map((s, idx) => {
       const matchCount = s.matches.length;
       const digitsLabel = s.digits && s.digits !== s.input ? ` <span class="search-digits">${s.digits}</span>` : '';
@@ -724,7 +730,7 @@
         ? '<div class="no-matches">No numbers matched this search.</div>'
         : s.matches.map(num => resultsByNumber.get(num)).filter(Boolean).map(renderNumberCard).join('');
       return `
-        <div class="search-card" data-idx="${idx}">
+        <div class="search-card${expandedIdx.has(String(idx)) ? ' expanded' : ''}" data-idx="${idx}">
           <div class="search-card-header">
             <div>
               <div class="search-card-title">${s.input}${digitsLabel}</div>
@@ -806,7 +812,7 @@
     await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
         type: 'START_SCAN',
-        opts: { patterns, repeats, sessions, label, searchTerm, searchDigits, planId, sessionId }
+        opts: { patterns, repeats, sessions, label, searchTerm, searchDigits, matchRegex: opts.matchRegex || null, planId, sessionId }
       }, resp => {
         if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
         else resolve(resp);
@@ -921,12 +927,13 @@
   });
 
   // AAABBB scan: search 5-char prefix AAABB for each distinct digit pair.
-  // The API caps filters at 5 chars, so AAABB catches everything that could become AAABBB;
-  // the AAABBB tag highlights the true matches in the Results tab.
+  // The API caps filters at 5 chars, so AAABB catches everything that could become AAABBB.
+  // matchRegex narrows the recorded matches to true AAABBB (two triples of different
+  // digits), so the search only shows AAABBB — not the AAABB numbers it had to fetch.
   $('scanTripleTriples').addEventListener('click', () => {
     const pats = [];
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
-    runBulkScan(pats, null, null, 'AAABBB scan');
+    runBulkScan(pats, null, null, 'AAABBB scan', { matchRegex: '(\\d)\\1\\1(?!\\1)(\\d)\\2\\2' });
   });
 
   // Consecutive ascending/descending sequences (4 and 5 digits long)
