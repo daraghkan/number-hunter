@@ -994,20 +994,23 @@
   // Consecutive ascending/descending sequences (4 and 5 digits long)
   function sequencePatterns() {
     const pats = [];
-    // 4-digit ascending: 1234, 2345, ..., 6789
-    for (let start = 1; start <= 6; start++) {
+    // amaysim filters cap at 5 digits, and every longer run (6-8 digits) contains
+    // one of these 5-digit windows — so searching ALL 4- and 5-digit consecutive
+    // windows across the full 0-9 span catches sequences of any length.
+    // 4-digit ascending: 0123, 1234, ..., 6789
+    for (let start = 0; start <= 6; start++) {
       pats.push(`${start}${start+1}${start+2}${start+3}`);
     }
-    // 4-digit descending: 9876, 8765, ..., 4321
-    for (let start = 9; start >= 4; start--) {
+    // 4-digit descending: 9876, 8765, ..., 3210
+    for (let start = 9; start >= 3; start--) {
       pats.push(`${start}${start-1}${start-2}${start-3}`);
     }
-    // 5-digit ascending: 12345, ..., 56789
-    for (let start = 1; start <= 5; start++) {
+    // 5-digit ascending: 01234, 12345, ..., 56789
+    for (let start = 0; start <= 5; start++) {
       pats.push(`${start}${start+1}${start+2}${start+3}${start+4}`);
     }
-    // 5-digit descending: 98765, ..., 54321
-    for (let start = 9; start >= 5; start--) {
+    // 5-digit descending: 98765, ..., 43210
+    for (let start = 9; start >= 4; start--) {
       pats.push(`${start}${start-1}${start-2}${start-3}${start-4}`);
     }
     return pats;

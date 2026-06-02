@@ -44,7 +44,7 @@ Run bulk scans across many patterns at once:
 | **AAABBB** | Every triple-triple pair like 111222 (90 patterns). The API caps filters at 5 chars, so this fetches via the `AAABB` proxy but only records true `AAABBB` numbers as matches. |
 | **ABAB** | Every alternating pair like 1212, 3434 (90 patterns) |
 | **Mirrors** | Every ABBA palindrome of 4 like 1221, 3443 (90 patterns) |
-| **Sequences** | 4 and 5 digit ascending/descending runs like 1234, 98765 (22 patterns) |
+| **Sequences** | Every 4 and 5 digit ascending/descending run across the full 0-9 span, e.g. 0123, 56789, 43210 (26 patterns). Since amaysim caps filters at 5 digits and every longer run contains one of these windows, this also catches 6-8 digit sequences. |
 | **Round 00** | Ends in 100, 200, ..., 900 (9 patterns) |
 
 #### Deep + multi-session by default
