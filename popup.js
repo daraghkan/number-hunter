@@ -835,7 +835,17 @@
     const remaining = Math.max(0, s.total - s.scanned);
     const etaSec = Math.round(remaining * 0.7);
     const eta = etaSec > 60 ? `~${Math.ceil(etaSec / 60)} min left` : etaSec > 5 ? `~${etaSec}s left` : 'finishing...';
-    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${s.found} new · ${eta}`;
+    // For an explicit search, surface how many numbers MATCH the search; for a
+    // pattern preset scan there's no search term, so show how many NEW numbers
+    // were discovered.
+    let hitsLabel;
+    if (s.searchDigits) {
+      const matches = s.matchedNumbers ? s.matchedNumbers.length : 0;
+      hitsLabel = `${matches} match${matches === 1 ? '' : 'es'}`;
+    } else {
+      hitsLabel = `${s.found} new`;
+    }
+    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${hitsLabel} · ${eta}`;
   }
 
   // Listen for background scan updates
@@ -849,7 +859,14 @@
         applyScanState(next);
       } else if (prev) {
         // scanState was cleared — scan finished
-        const summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+        let summary;
+        if (prev.searchDigits) {
+          const matches = prev.matchedNumbers ? prev.matchedNumbers.length : 0;
+          const term = prev.searchTerm || prev.searchDigits;
+          summary = `Done! ${matches} match${matches === 1 ? '' : 'es'} for "${term}" across ${prev.scanned} calls.`;
+        } else {
+          summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+        }
         exitScanningUI(summary);
         // Refresh results from storage and switch to results tab
         chrome.storage.local.get(['results', 'searches'], data => {
