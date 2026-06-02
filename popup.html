@@ -83,7 +83,6 @@
     .number-card.top-result { border: 1.5px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.15); background: linear-gradient(135deg, #1f1a08, #1a1a1a); }
     .number-card .top-ribbon { position: absolute; top: -7px; left: 10px; font-size: 9px; padding: 1px 6px; background: #ffd700; color: #000; font-weight: 700; border-radius: 3px; letter-spacing: 0.5px; }
     .number-card .num { font-size: 16px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 1px; }
-    .number-card .num-intl { font-size: 10px; color: #555; font-family: 'SF Mono', 'Fira Code', monospace; margin-top: 1px; }
     .number-card.copied { background: #16331a; border-color: #4caf50; }
     .number-card.copied::after { content: 'Copied — pick it on amaysim'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #4caf50; font-size: 11px; font-weight: 600; background: #0a0a0a; padding: 2px 6px; border-radius: 4px; }
     .fav-btn { background: none; border: none; color: #3a3a3a; font-size: 18px; cursor: pointer; padding: 0 6px; line-height: 1; transition: color 0.15s, transform 0.15s; align-self: center; }
@@ -104,6 +103,11 @@
     .tag.triple { background: rgba(255,140,0,0.2); }
     .tag.aaabbb { background: rgba(255,100,0,0.25); color: #ffb266; }
     .tag.aaabb { background: rgba(255,100,0,0.2); color: #ffa366; }
+    .tag.aaaabb { background: rgba(255,100,0,0.28); color: #ffc299; }
+    .tag.aabbbb { background: rgba(255,100,0,0.28); color: #ffc299; }
+    .tag.aabbbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
+    .tag.aaabbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
+    .tag.aabbccc { background: rgba(255,100,0,0.28); color: #ffb266; }
     .tag.aabbb { background: rgba(255,100,0,0.18); color: #ff9952; }
     .tag.aabbccdd { background: rgba(138,99,255,0.3); color: #c4b5fd; }
     .tag.aabbcc { background: rgba(138,99,255,0.22); color: #b8a6fa; }
@@ -120,6 +124,9 @@
     /* Searches tab */
     .searches-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
     .search-card { background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .search-card.in-progress-card { border-color: #ff8c00; background: #1a1408; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .search-card-meta .in-progress { color: #ff8c00; font-weight: 600; animation: blink 1.2s infinite; }
     .search-card-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
     .search-card-title { font-weight: 600; color: #fff; font-size: 13px; }
     .search-card-title .search-digits { color: #888; font-size: 11px; font-weight: 400; margin-left: 6px; }
