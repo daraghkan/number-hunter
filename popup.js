@@ -1176,6 +1176,39 @@
     $('totalSessions').textContent = saved.sessionCount || 0;
   }
 
+  // --- Version label + update check ---
+  const REPO = 'daraghkan/number-hunter';
+  const REMOTE_MANIFEST = `https://raw.githubusercontent.com/${REPO}/main/manifest.json`;
+
+  // Returns true if version string a is newer than b (semver-ish, numeric parts).
+  function isNewerVersion(a, b) {
+    const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
+    const pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const x = pa[i] || 0, y = pb[i] || 0;
+      if (x > y) return true;
+      if (x < y) return false;
+    }
+    return false;
+  }
+
+  async function checkVersion() {
+    const current = chrome.runtime.getManifest().version;
+    $('versionLabel').textContent = 'v' + current;
+    try {
+      const resp = await fetch(REMOTE_MANIFEST, { cache: 'no-store' });
+      if (!resp.ok) return;
+      const remote = await resp.json();
+      if (remote.version && isNewerVersion(remote.version, current)) {
+        $('updateText').textContent = `Update available — v${remote.version} (you have v${current})`;
+        $('updateBanner').classList.remove('hidden');
+      }
+    } catch (e) {
+      // Offline or fetch blocked — silently skip; version label still shows.
+    }
+  }
+
   // --- Init ---
+  checkVersion();
   init();
 })();
