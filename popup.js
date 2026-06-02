@@ -667,7 +667,7 @@
     try {
       await navigator.clipboard.writeText(card.dataset.number);
       card.classList.add('copied');
-      setTimeout(() => card.classList.remove('copied'), 900);
+      setTimeout(() => card.classList.remove('copied'), 1600);
     } catch (err) {
       console.warn('Clipboard write failed:', err);
     }
