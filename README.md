@@ -19,17 +19,17 @@ No amaysim tab or manual setup is needed. If auto-setup ever fails, the extensio
 
 ### Searching
 
-Type digits or a word into the search box and hit Search.
+Type digits or a word into the search box and hit Search. Every search runs as a background scan using the same deep, multi-session method as the Pattern Scans below (see [Deep + multi-session by default](#deep--multi-session-by-default)), so it keeps running if you close the popup and shows up in **Recent Searches**.
 
-- **Digits** (1-5 characters): searches the amaysim API directly for numbers containing that pattern.
-- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665) and searched.
-- **Longer input** (6+ characters): automatically split into sub-patterns and scanned in bulk.
+- **Digits** (1-5 characters): scans for numbers containing that pattern.
+- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665), then scanned.
+- **Longer input** (6+ characters): automatically split into 3-to-5-digit sub-patterns and scanned in bulk.
 
 A live hint shows the digit conversion as you type letters.
 
 ### Find Best Number
 
-A single top-level button that runs a deep full scan (all patterns, three passes each), jumps you to the **All Numbers** tab sorted by score, and highlights the winning card with a gold border and `TOP SCORE` ribbon.
+A single top-level button that runs a full scan across all pattern types (using the default deep, multi-session method), jumps you to the **All Numbers** tab sorted by score, and highlights the winning card with a gold border and `TOP SCORE` ribbon.
 
 ### Pattern Scans
 
@@ -40,21 +40,21 @@ Run bulk scans across many patterns at once:
 | **Triples** | AAA for each digit (10 patterns) |
 | **Quads** | AAAA for each digit (10 patterns) |
 | **Quints** | AAAAA for each digit (10 patterns) |
-| **All Doubles** | Every AABB combination (90 patterns) |
+| **All Doubles** | Every AABB combination (90 patterns); longer runs like AABBCC and AABBCCDD get tagged when found |
 | **AAABBB** | Every triple-triple pair like 111222 (90 patterns). The API caps filters at 5 chars, so this fetches via the `AAABB` proxy but only records true `AAABBB` numbers as matches. |
 | **ABAB** | Every alternating pair like 1212, 3434 (90 patterns) |
 | **Mirrors** | Every ABBA palindrome of 4 like 1221, 3443 (90 patterns) |
-| **Sequences** | 4 and 5 digit ascending/descending runs like 1234, 98765 (22 patterns) |
+| **Sequences** | Every 4 and 5 digit ascending/descending run across the full 0-9 span, e.g. 0123, 56789, 43210 (26 patterns). Since amaysim caps filters at 5 digits and every longer run contains one of these windows, this also catches 6-8 digit sequences. |
 | **Round 00** | Ends in 100, 200, ..., 900 (9 patterns) |
 
 #### Deep + multi-session by default
 
-Every scan now runs the widest-coverage method automatically (no checkboxes to toggle):
+Every scan runs the widest-coverage method automatically (there are no toggles):
 
 - **3 passes per filter** -- each filter is queried 3 times. The amaysim API tracks a `flushList` of numbers it has already shown you and rotates fresh ones in, so repeating the same filter yields up to 3x more candidates.
 - **3 rotated sessions** -- after finishing one pass of all patterns, the extension creates a brand-new amaysim session (fresh `sessionId` + cart) and runs the same scan again, three times total. Each session has its own number pool, so this surfaces numbers the previous session never had access to.
 
-Because this is always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
+Because both are always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
 
 Scans run with a 300ms delay between API calls. A progress bar pinned to the bottom of the popup shows the session count (`session 1/3`), pass number (`pass 1/3`), and an ETA. For an explicit word/number search it shows the running **match count**; for a pattern scan it shows how many **new** numbers were found. The **Stop** button next to it works mid-scan.
 
@@ -103,7 +103,7 @@ Numbers are automatically classified with up to 4 tags:
 | Seq _nnn_ | 3+ ascending or descending run (tag shows the digits, e.g. `Seq 234`) | 04x **2345** xx |
 | Round | Ends in 000/0000/500 or any X00 | 04xxxx **3000** or 04xxxx **700** |
 | AABB | Two different-digit pairs | 04xxx **1122** x |
-| Heavy | A single digit appears 4+ times anywhere | `Heavy 8 ×5` |
+| Heavy | A single digit appears 4+ times, with extras beyond any run already tagged | `Heavy 2 ×5` on 2222**4**9**2**5 |
 | Pair | Contains a double digit | 04xxx **55** xxx |
 
 ### Scoring
@@ -122,7 +122,7 @@ The **More actions** menu in the All Numbers tab keeps less-used controls tucked
 - **View Full History** -- see every number ever found across all sessions
 - **Clear All History** -- delete everything (favourites are preserved)
 
-The **New Session (Fresh Numbers)** button is at the top of the actions area -- creates a new amaysim session for a different number pool while keeping history intact.
+The **New Session (Fresh Numbers)** button sits in this actions area too, at the bottom of the All Numbers tab (scroll past the results list to reach it). It starts a fresh amaysim session to pull from a different number pool. This **clears the current All Numbers list**, but your all-time history is preserved — every number is still in **View Full History** (and favourites are kept). Note: if you have an amaysim tab open, setup may reconnect to that tab's existing session rather than a brand-new pool.
 
 ## Architecture
 

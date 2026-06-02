@@ -193,6 +193,12 @@
     }
     return best;
   }
+  // Longest consecutive run of a given digit in d (e.g. longest streak of "2"s)
+  function longestRunOf(d, digit) {
+    let best = 0, cur = 0;
+    for (const ch of d) { if (ch === digit) { cur++; if (cur > best) best = cur; } else cur = 0; }
+    return best;
+  }
 
   // Find the longest ascending or descending run of consecutive digits (3+)
   function findSequence(d) {
@@ -285,10 +291,16 @@
       tags.push({ label: 'AABB', cls: 'aabb' });
     }
 
-    // Heavy single-digit dominance (e.g. five 8s scattered across d)
+    // Heavy single-digit dominance (e.g. five 8s scattered across d). Show it
+    // when a digit appears 4+ times AND that dominance isn't already fully
+    // captured by a run tag — i.e. there's no Quint/Quad/Triple, or the digit
+    // appears more times than its longest run (so there are extras elsewhere).
     const dom = dominantDigit(d);
-    if (dom && !tags.some(t => ['quint','quad','triple'].includes(t.cls))) {
-      tags.push({ label: `Heavy ${dom.digit} ×${dom.count}`, cls: 'heavy' });
+    if (dom) {
+      const hasRunTag = tags.some(t => ['quint','quad','triple'].includes(t.cls));
+      if (!hasRunTag || dom.count > longestRunOf(d, dom.digit)) {
+        tags.push({ label: `Heavy ${dom.digit} ×${dom.count}`, cls: 'heavy' });
+      }
     }
 
     // Pair fallback (only if nothing else classified it)
@@ -884,22 +896,25 @@
     if ($('panel-searches').classList.contains('active')) renderSearches();
     const pct = s.total ? Math.round((s.scanned / s.total) * 100) : 0;
     progressFill.style.width = pct + '%';
-    const sessionLabel = s.sessionsTotal > 1 ? `session ${s.sessionsDone || 1}/${s.sessionsTotal} · ` : '';
-    const passLabel = s.repeats > 1 ? ` (pass ${(s.repIdx ?? 0) + 1}/${s.repeats})` : '';
     const remaining = Math.max(0, s.total - s.scanned);
     const etaSec = Math.round(remaining * 0.7);
     const eta = etaSec > 60 ? `~${Math.ceil(etaSec / 60)} min left` : etaSec > 5 ? `~${etaSec}s left` : 'finishing...';
-    // For an explicit search, surface how many numbers MATCH the search; for a
-    // pattern preset scan there's no search term, so show how many NEW numbers
-    // were discovered.
-    let hitsLabel;
+    // Deep multi-session scanning is always on, so session/pass counters add
+    // noise. Lead with what the user cares about: new numbers found, and — for
+    // an explicit search — whether a match has turned up yet.
+    const newCount = s.found || 0;
+    const newLabel = `${newCount} new number${newCount === 1 ? '' : 's'} found`;
+    let label;
     if (s.searchDigits) {
       const matches = s.matchedNumbers ? s.matchedNumbers.length : 0;
-      hitsLabel = `${matches} match${matches === 1 ? '' : 'es'}`;
+      const matchLabel = matches === 0
+        ? 'No match yet'
+        : `${matches} match${matches === 1 ? '' : 'es'} found`;
+      label = `${matchLabel} · ${newLabel}`;
     } else {
-      hitsLabel = `${s.found} new`;
+      label = newLabel;
     }
-    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${hitsLabel} · ${eta}`;
+    progressText.textContent = `${label} · ${eta}`;
   }
 
   // Listen for background scan updates
@@ -914,13 +929,18 @@
       } else if (prev) {
         // scanState was cleared — scan finished
         liveScan = null;
+        const newCount = prev.found || 0;
+        const newLabel = `${newCount} new number${newCount === 1 ? '' : 's'} found`;
         let summary;
         if (prev.searchDigits) {
           const matches = prev.matchedNumbers ? prev.matchedNumbers.length : 0;
           const term = prev.searchTerm || prev.searchDigits;
-          summary = `Done! ${matches} match${matches === 1 ? '' : 'es'} for "${term}" across ${prev.scanned} calls.`;
+          const matchLabel = matches === 0
+            ? `No matches for "${term}"`
+            : `${matches} match${matches === 1 ? '' : 'es'} for "${term}"`;
+          summary = `Done! ${matchLabel} · ${newLabel}.`;
         } else {
-          summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+          summary = `Done! ${newLabel}.`;
         }
         exitScanningUI(summary);
         // Refresh results from storage and switch to results tab
@@ -986,20 +1006,23 @@
   // Consecutive ascending/descending sequences (4 and 5 digits long)
   function sequencePatterns() {
     const pats = [];
-    // 4-digit ascending: 1234, 2345, ..., 6789
-    for (let start = 1; start <= 6; start++) {
+    // amaysim filters cap at 5 digits, and every longer run (6-8 digits) contains
+    // one of these 5-digit windows — so searching ALL 4- and 5-digit consecutive
+    // windows across the full 0-9 span catches sequences of any length.
+    // 4-digit ascending: 0123, 1234, ..., 6789
+    for (let start = 0; start <= 6; start++) {
       pats.push(`${start}${start+1}${start+2}${start+3}`);
     }
-    // 4-digit descending: 9876, 8765, ..., 4321
-    for (let start = 9; start >= 4; start--) {
+    // 4-digit descending: 9876, 8765, ..., 3210
+    for (let start = 9; start >= 3; start--) {
       pats.push(`${start}${start-1}${start-2}${start-3}`);
     }
-    // 5-digit ascending: 12345, ..., 56789
-    for (let start = 1; start <= 5; start++) {
+    // 5-digit ascending: 01234, 12345, ..., 56789
+    for (let start = 0; start <= 5; start++) {
       pats.push(`${start}${start+1}${start+2}${start+3}${start+4}`);
     }
-    // 5-digit descending: 98765, ..., 54321
-    for (let start = 9; start >= 5; start--) {
+    // 5-digit descending: 98765, ..., 43210
+    for (let start = 9; start >= 4; start--) {
       pats.push(`${start}${start-1}${start-2}${start-3}${start-4}`);
     }
     return pats;
@@ -1103,13 +1126,6 @@
   });
 
   $('closeHistory').addEventListener('click', () => { $('historyOverlay').style.display = 'none'; });
-
-  $('clearResults').addEventListener('click', async () => {
-    allResults = [];
-    await chrome.storage.local.set({ results: [] });
-    $('totalFound').textContent = '0';
-    renderResults();
-  });
 
   $('moreToggle').addEventListener('click', () => {
     const m = $('moreActions');

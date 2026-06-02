@@ -98,28 +98,33 @@
 
     .number-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .tag { font-size: 9px; padding: 2px 6px; background: rgba(255,140,0,0.12); color: #ff8c00; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .tag.quint { background: rgba(255,215,0,0.3); color: #ffd700; }
-    .tag.quad { background: rgba(255,140,0,0.25); }
-    .tag.triple { background: rgba(255,140,0,0.2); }
-    .tag.aaabbb { background: rgba(255,100,0,0.25); color: #ffb266; }
-    .tag.aaabb { background: rgba(255,100,0,0.2); color: #ffa366; }
-    .tag.aaaabb { background: rgba(255,100,0,0.28); color: #ffc299; }
-    .tag.aabbbb { background: rgba(255,100,0,0.28); color: #ffc299; }
-    .tag.aabbbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
-    .tag.aaabbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
-    .tag.aabbccc { background: rgba(255,100,0,0.28); color: #ffb266; }
-    .tag.aabbb { background: rgba(255,100,0,0.18); color: #ff9952; }
-    .tag.aabbccdd { background: rgba(138,99,255,0.3); color: #c4b5fd; }
-    .tag.aabbcc { background: rgba(138,99,255,0.22); color: #b8a6fa; }
-    .tag.sequence { background: rgba(76,175,80,0.2); color: #4caf50; }
-    .tag.round { background: rgba(33,150,243,0.2); color: #64b5f6; }
-    .tag.aabb { background: rgba(255,99,132,0.2); color: #ff7b93; }
-    .tag.abab { background: rgba(99,179,237,0.22); color: #63b3ed; }
-    .tag.mirror { background: rgba(160,140,255,0.22); color: #a08cff; }
+    /* Pure repeats — warm gold/orange family */
+    .tag.quint { background: rgba(255,215,0,0.30); color: #ffd700; }
+    .tag.quad { background: rgba(255,167,38,0.26); color: #ffb74d; }
+    .tag.triple { background: rgba(255,224,130,0.18); color: #ffe082; }
+    /* Mixed grouped runs — each a distinct hue so look-alike names (e.g.
+       AAAABB vs AAABB) are easy to tell apart at a glance */
+    .tag.aaabbb { background: rgba(255,94,94,0.22); color: #ff8a8a; }
+    .tag.aaaabb { background: rgba(163,230,53,0.22); color: #c5e86b; }
+    .tag.aabbbb { background: rgba(45,212,191,0.22); color: #5eead4; }
+    .tag.aaabb { background: rgba(56,189,248,0.22); color: #7dd3fc; }
+    .tag.aabbb { background: rgba(232,121,249,0.22); color: #f0abfc; }
+    .tag.aabbbcc { background: rgba(192,132,252,0.24); color: #d8b4fe; }
+    .tag.aaabbcc { background: rgba(251,146,60,0.24); color: #fdba74; }
+    .tag.aabbccc { background: rgba(244,114,182,0.24); color: #f9a8d4; }
+    /* Consecutive different-digit pairs — indigo family */
+    .tag.aabbccdd { background: rgba(129,140,248,0.30); color: #a5b4fc; }
+    .tag.aabbcc { background: rgba(129,140,248,0.20); color: #c7d2fe; }
+    .tag.aabb { background: rgba(251,113,133,0.22); color: #fda4af; }
+    /* Other patterns — distinct standalone hues */
+    .tag.sequence { background: rgba(74,222,128,0.20); color: #4ade80; }
+    .tag.round { background: rgba(96,165,250,0.20); color: #60a5fa; }
+    .tag.abab { background: rgba(34,211,238,0.20); color: #22d3ee; }
+    .tag.mirror { background: rgba(167,139,250,0.22); color: #c4b5fd; }
     .tag.abcabc { background: rgba(255,215,0,0.25); color: #ffd700; }
-    .tag.heavy { background: rgba(255,170,80,0.2); color: #ffaa50; }
+    .tag.heavy { background: rgba(148,163,184,0.20); color: #cbd5e1; }
     .tag.pair { background: rgba(255,255,255,0.08); color: #aaa; }
-    .tag.search { background: rgba(255,140,0,0.15); color: #ff8c00; }
+    .tag.search { background: rgba(255,140,0,0.18); color: #ffae5c; }
 
     /* Searches tab */
     .searches-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
@@ -140,11 +145,10 @@
     .search-card-matches .number-card { background: #0f0f0f; }
     .no-matches { text-align: center; padding: 16px; color: #666; font-size: 11px; font-style: italic; }
 
-    .sort-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-    .sort-row select { background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
-    .sort-row select:focus { border-color: #ff8c00; outline: none; }
+    #sortSelect { background: #1a1a1a; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
+    #sortSelect:focus { border-color: #ff8c00; outline: none; }
     .results-count { font-size: 11px; color: #666; margin-bottom: 8px; }
-    .filter-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .filter-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
     .filter-btn { padding: 4px 10px; font-size: 11px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #888; cursor: pointer; }
     .filter-btn.active { border-color: #ff8c00; color: #ff8c00; }
 
@@ -238,11 +242,11 @@
   <!-- RESULTS TAB -->
   <div class="panel" id="panel-results">
     <div class="claim-box">
-      <strong>Found a number you like?</strong> This tool only finds available numbers — to actually get one:
+      <strong>Found a number you like?</strong>
       <ol>
-        <li>Tap a number below to <strong>copy</strong> it.</li>
-        <li>Go to <a href="https://www.amaysim.com.au/sim-plans/28-day-sim-plans/as-you-go" target="_blank">amaysim's As You Go plan</a> and select <strong>Buy now</strong>.</li>
-        <li>Scroll to <strong>Pick a new number</strong> and search for your copied number to select it.</li>
+        <li>Tap a number to <strong>copy</strong> it.</li>
+        <li>On <a href="https://www.amaysim.com.au/sim-plans/28-day-sim-plans/as-you-go" target="_blank">amaysim</a>, pick a plan (e.g. As You Go) and select <strong>Buy now</strong>.</li>
+        <li>Select <strong>Pick a new number</strong>, search your copied number — amaysim accepts only <strong>5 digits</strong>, so use its most distinctive 5-digit run.</li>
       </ol>
     </div>
     <div class="filter-row">
@@ -250,15 +254,10 @@
       <button class="filter-btn" data-filter="favourites">★ Favs</button>
       <button class="filter-btn" data-filter="free">Free</button>
       <button class="filter-btn" data-filter="premium">Premium</button>
-      <button class="filter-btn" id="clearResults" style="margin-left:auto; border-color:#f44336; color:#f44336;">Clear</button>
-    </div>
-    <div class="sort-row">
-      <label style="font-size:11px; color:#888;">Sort:</label>
-      <select id="sortSelect">
-        <option value="score">Score</option>
-        <option value="recent">Most recent</option>
+      <select id="sortSelect" style="margin-left:auto;">
+        <option value="score">Sort: Score</option>
+        <option value="recent">Sort: Recent</option>
       </select>
-      <span style="font-size:10px; color:#555; margin-left:auto;" title="0–30 average · 60+ rare · 90+ exceptional">score guide</span>
     </div>
     <div class="results-count" id="resultsCount"></div>
     <div id="resultsList">
