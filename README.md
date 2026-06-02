@@ -103,7 +103,7 @@ Numbers are automatically classified with up to 4 tags:
 | Seq _nnn_ | 3+ ascending or descending run (tag shows the digits, e.g. `Seq 234`) | 04x **2345** xx |
 | Round | Ends in 000/0000/500 or any X00 | 04xxxx **3000** or 04xxxx **700** |
 | AABB | Two different-digit pairs | 04xxx **1122** x |
-| Heavy | A single digit appears 4+ times anywhere | `Heavy 8 ×5` |
+| Heavy | A single digit appears 4+ times, with extras beyond any run already tagged | `Heavy 2 ×5` on 2222**4**9**2**5 |
 | Pair | Contains a double digit | 04xxx **55** xxx |
 
 ### Scoring

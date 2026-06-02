@@ -193,6 +193,12 @@
     }
     return best;
   }
+  // Longest consecutive run of a given digit in d (e.g. longest streak of "2"s)
+  function longestRunOf(d, digit) {
+    let best = 0, cur = 0;
+    for (const ch of d) { if (ch === digit) { cur++; if (cur > best) best = cur; } else cur = 0; }
+    return best;
+  }
 
   // Find the longest ascending or descending run of consecutive digits (3+)
   function findSequence(d) {
@@ -285,10 +291,16 @@
       tags.push({ label: 'AABB', cls: 'aabb' });
     }
 
-    // Heavy single-digit dominance (e.g. five 8s scattered across d)
+    // Heavy single-digit dominance (e.g. five 8s scattered across d). Show it
+    // when a digit appears 4+ times AND that dominance isn't already fully
+    // captured by a run tag — i.e. there's no Quint/Quad/Triple, or the digit
+    // appears more times than its longest run (so there are extras elsewhere).
     const dom = dominantDigit(d);
-    if (dom && !tags.some(t => ['quint','quad','triple'].includes(t.cls))) {
-      tags.push({ label: `Heavy ${dom.digit} ×${dom.count}`, cls: 'heavy' });
+    if (dom) {
+      const hasRunTag = tags.some(t => ['quint','quad','triple'].includes(t.cls));
+      if (!hasRunTag || dom.count > longestRunOf(d, dom.digit)) {
+        tags.push({ label: `Heavy ${dom.digit} ×${dom.count}`, cls: 'heavy' });
+      }
     }
 
     // Pair fallback (only if nothing else classified it)
