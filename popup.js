@@ -884,22 +884,25 @@
     if ($('panel-searches').classList.contains('active')) renderSearches();
     const pct = s.total ? Math.round((s.scanned / s.total) * 100) : 0;
     progressFill.style.width = pct + '%';
-    const sessionLabel = s.sessionsTotal > 1 ? `session ${s.sessionsDone || 1}/${s.sessionsTotal} · ` : '';
-    const passLabel = s.repeats > 1 ? ` (pass ${(s.repIdx ?? 0) + 1}/${s.repeats})` : '';
     const remaining = Math.max(0, s.total - s.scanned);
     const etaSec = Math.round(remaining * 0.7);
     const eta = etaSec > 60 ? `~${Math.ceil(etaSec / 60)} min left` : etaSec > 5 ? `~${etaSec}s left` : 'finishing...';
-    // For an explicit search, surface how many numbers MATCH the search; for a
-    // pattern preset scan there's no search term, so show how many NEW numbers
-    // were discovered.
-    let hitsLabel;
+    // Deep multi-session scanning is always on, so session/pass counters add
+    // noise. Lead with what the user cares about: new numbers found, and — for
+    // an explicit search — whether a match has turned up yet.
+    const newCount = s.found || 0;
+    const newLabel = `${newCount} new number${newCount === 1 ? '' : 's'} found`;
+    let label;
     if (s.searchDigits) {
       const matches = s.matchedNumbers ? s.matchedNumbers.length : 0;
-      hitsLabel = `${matches} match${matches === 1 ? '' : 'es'}`;
+      const matchLabel = matches === 0
+        ? 'No match yet'
+        : `${matches} match${matches === 1 ? '' : 'es'} found`;
+      label = `${matchLabel} · ${newLabel}`;
     } else {
-      hitsLabel = `${s.found} new`;
+      label = newLabel;
     }
-    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${hitsLabel} · ${eta}`;
+    progressText.textContent = `${label} · ${eta}`;
   }
 
   // Listen for background scan updates
@@ -914,13 +917,18 @@
       } else if (prev) {
         // scanState was cleared — scan finished
         liveScan = null;
+        const newCount = prev.found || 0;
+        const newLabel = `${newCount} new number${newCount === 1 ? '' : 's'} found`;
         let summary;
         if (prev.searchDigits) {
           const matches = prev.matchedNumbers ? prev.matchedNumbers.length : 0;
           const term = prev.searchTerm || prev.searchDigits;
-          summary = `Done! ${matches} match${matches === 1 ? '' : 'es'} for "${term}" across ${prev.scanned} calls.`;
+          const matchLabel = matches === 0
+            ? `No matches for "${term}"`
+            : `${matches} match${matches === 1 ? '' : 'es'} for "${term}"`;
+          summary = `Done! ${matchLabel} · ${newLabel}.`;
         } else {
-          summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+          summary = `Done! ${newLabel}.`;
         }
         exitScanningUI(summary);
         // Refresh results from storage and switch to results tab
