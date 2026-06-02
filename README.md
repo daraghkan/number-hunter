@@ -19,17 +19,17 @@ No amaysim tab or manual setup is needed. If auto-setup ever fails, the extensio
 
 ### Searching
 
-Type digits or a word into the search box and hit Search.
+Type digits or a word into the search box and hit Search. Every search runs as a background scan using the same deep, multi-session method as the Pattern Scans below (see [Deep + multi-session by default](#deep--multi-session-by-default)), so it keeps running if you close the popup and shows up in **Recent Searches**.
 
-- **Digits** (1-5 characters): searches the amaysim API directly for numbers containing that pattern.
-- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665) and searched.
-- **Longer input** (6+ characters): automatically split into sub-patterns and scanned in bulk.
+- **Digits** (1-5 characters): scans for numbers containing that pattern.
+- **Words**: converted to digits using T9 phone keypad mapping (e.g. COOL = 2665), then scanned.
+- **Longer input** (6+ characters): automatically split into 3-to-5-digit sub-patterns and scanned in bulk.
 
 A live hint shows the digit conversion as you type letters.
 
 ### Find Best Number
 
-A single top-level button that runs a deep full scan (all patterns, three passes each), jumps you to the **All Numbers** tab sorted by score, and highlights the winning card with a gold border and `TOP SCORE` ribbon.
+A single top-level button that runs a full scan across all pattern types (using the default deep, multi-session method), jumps you to the **All Numbers** tab sorted by score, and highlights the winning card with a gold border and `TOP SCORE` ribbon.
 
 ### Pattern Scans
 
@@ -40,7 +40,7 @@ Run bulk scans across many patterns at once:
 | **Triples** | AAA for each digit (10 patterns) |
 | **Quads** | AAAA for each digit (10 patterns) |
 | **Quints** | AAAAA for each digit (10 patterns) |
-| **All Doubles** | Every AABB combination (90 patterns) |
+| **All Doubles** | Every AABB combination (90 patterns); longer runs like AABBCC and AABBCCDD get tagged when found |
 | **AAABBB** | Every triple-triple pair like 111222 (90 patterns). The API caps filters at 5 chars, so this fetches via the `AAABB` proxy but only records true `AAABBB` numbers as matches. |
 | **ABAB** | Every alternating pair like 1212, 3434 (90 patterns) |
 | **Mirrors** | Every ABBA palindrome of 4 like 1221, 3443 (90 patterns) |
@@ -49,12 +49,12 @@ Run bulk scans across many patterns at once:
 
 #### Deep + multi-session by default
 
-Every scan now runs the widest-coverage method automatically (no checkboxes to toggle):
+Every scan runs the widest-coverage method automatically (there are no toggles):
 
 - **3 passes per filter** -- each filter is queried 3 times. The amaysim API tracks a `flushList` of numbers it has already shown you and rotates fresh ones in, so repeating the same filter yields up to 3x more candidates.
 - **3 rotated sessions** -- after finishing one pass of all patterns, the extension creates a brand-new amaysim session (fresh `sessionId` + cart) and runs the same scan again, three times total. Each session has its own number pool, so this surfaces numbers the previous session never had access to.
 
-Because this is always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
+Because both are always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
 
 Scans run with a 300ms delay between API calls. A progress bar pinned to the bottom of the popup shows the session count (`session 1/3`), pass number (`pass 1/3`), and an ETA. For an explicit word/number search it shows the running **match count**; for a pattern scan it shows how many **new** numbers were found. The **Stop** button next to it works mid-scan.
 
