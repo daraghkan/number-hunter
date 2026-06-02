@@ -122,7 +122,7 @@ The **More actions** menu in the All Numbers tab keeps less-used controls tucked
 - **View Full History** -- see every number ever found across all sessions
 - **Clear All History** -- delete everything (favourites are preserved)
 
-The **New Session (Fresh Numbers)** button is at the top of the actions area -- creates a new amaysim session for a different number pool while keeping history intact.
+The **New Session (Fresh Numbers)** button sits in this actions area too, at the bottom of the All Numbers tab (scroll past the results list to reach it). It starts a fresh amaysim session to pull from a different number pool. This **clears the current All Numbers list**, but your all-time history is preserved — every number is still in **View Full History** (and favourites are kept). Note: if you have an amaysim tab open, setup may reconnect to that tab's existing session rather than a brand-new pool.
 
 ## Architecture
 
