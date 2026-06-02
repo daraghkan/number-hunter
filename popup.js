@@ -16,6 +16,7 @@
   let currentFilter = 'all';
   let currentSort = 'score';
   let searches = []; // log of each search performed
+  let liveScan = null; // the running scan, shown in Recent Searches as "in progress"
   let favourites = []; // saved number entries the user has starred
   let favSet = new Set(); // O(1) lookup for star state
 
@@ -137,6 +138,31 @@
     const m = d.match(/(\d)\1(\d)\2\2/);
     return !!m && m[1] !== m[2];
   }
+  // AAAABB: quad then pair of different digits (e.g. 111122)
+  function hasAAAABB(d) {
+    const m = d.match(/(\d)\1\1\1(\d)\2/);
+    return !!m && m[1] !== m[2];
+  }
+  // AABBBB: pair then quad of different digits (e.g. 112222)
+  function hasAABBBB(d) {
+    const m = d.match(/(\d)\1(\d)\2\2\2/);
+    return !!m && m[1] !== m[2];
+  }
+  // AABBBCC: pair, triple, pair with 3 distinct digits (e.g. 1122233)
+  function hasAABBBCC(d) {
+    const m = d.match(/(\d)\1(\d)\2\2(\d)\3/);
+    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+  }
+  // AAABBCC: triple, pair, pair with 3 distinct digits (e.g. 1112233)
+  function hasAAABBCC(d) {
+    const m = d.match(/(\d)\1\1(\d)\2(\d)\3/);
+    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+  }
+  // AABBCCC: pair, pair, triple with 3 distinct digits (e.g. 1122333)
+  function hasAABBCCC(d) {
+    const m = d.match(/(\d)\1(\d)\2(\d)\3\3/);
+    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+  }
   // AABB: a pair followed by a different pair (e.g. 1122)
   function hasAABB(d) {
     const m = d.match(/(\d)\1(\d)\2/);
@@ -199,11 +225,21 @@
       tags.push({ label: 'Triple', cls: 'triple' });
     }
 
-    // Grouped pair patterns (priority: AABBCCDD > AABBCC > AAABBB > AAABB > AABBB > AABB)
+    // Grouped pair/run patterns — most specific (longest, most distinct digits) first
     if (hasAABBCCDD(d)) {
       tags.push({ label: 'AABBCCDD', cls: 'aabbccdd' });
+    } else if (hasAABBBCC(d)) {
+      tags.push({ label: 'AABBBCC', cls: 'aabbbcc' });
+    } else if (hasAAABBCC(d)) {
+      tags.push({ label: 'AAABBCC', cls: 'aaabbcc' });
+    } else if (hasAABBCCC(d)) {
+      tags.push({ label: 'AABBCCC', cls: 'aabbccc' });
     } else if (hasAABBCC(d)) {
       tags.push({ label: 'AABBCC', cls: 'aabbcc' });
+    } else if (hasAAAABB(d)) {
+      tags.push({ label: 'AAAABB', cls: 'aaaabb' });
+    } else if (hasAABBBB(d)) {
+      tags.push({ label: 'AABBBB', cls: 'aabbbb' });
     } else if (hasAAABBB(d)) {
       tags.push({ label: 'AAABBB', cls: 'aaabbb' });
     } else if (hasAAABB(d)) {
@@ -233,7 +269,7 @@
     }
 
     // ABAB alternating (e.g. 1212)
-    const hasGroupedOrAltOrMirror = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad','abcabc'].includes(t.cls));
+    const hasGroupedOrAltOrMirror = tags.some(t => ['aabbccdd','aabbbcc','aaabbcc','aabbccc','aabbcc','aaaabb','aabbbb','aaabbb','aaabb','aabbb','quint','quad','abcabc'].includes(t.cls));
     if (!hasGroupedOrAltOrMirror && hasABAB(d)) {
       tags.push({ label: 'ABAB', cls: 'abab' });
     }
@@ -244,7 +280,7 @@
     }
 
     // AABB (fallback if no larger grouped pattern matched)
-    const hasGrouped = tags.some(t => ['aabbccdd','aabbcc','aaabbb','aaabb','aabbb','quint','quad','abab','mirror'].includes(t.cls));
+    const hasGrouped = tags.some(t => ['aabbccdd','aabbbcc','aaabbcc','aabbccc','aabbcc','aaaabb','aabbbb','aaabbb','aaabb','aabbb','quint','quad','abab','mirror'].includes(t.cls));
     if (!hasGrouped && hasAABB(d)) {
       tags.push({ label: 'AABB', cls: 'aabb' });
     }
@@ -389,7 +425,7 @@
 
   // --- Initialize ---
   async function init() {
-    setStatus('yellow', 'Connecting...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
 
     // Load history
     const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches', 'scanState', 'favourites']);
@@ -405,20 +441,16 @@
       applyScanState(saved.scanState);
     }
 
-    // First-run welcome card
-    const { welcomeDismissed } = await chrome.storage.local.get('welcomeDismissed');
-    if (!welcomeDismissed) $('welcomeBox').classList.remove('hidden');
-
     // 1. Try saved session
     if (saved.sessionId) {
-      setStatus('yellow', 'Reconnecting...');
+      setStatus('yellow', 'Setting up — please wait, no action needed…');
       try {
         if (await tryConnect(saved.sessionId)) return;
       } catch (e) { /* expired */ }
     }
 
     // 2. Try auto-detect from amaysim page
-    setStatus('yellow', 'Looking for amaysim session...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
     try {
       const resp = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ type: 'GET_PAGE_SESSION' }, r => {
@@ -428,7 +460,7 @@
         });
       });
       if (resp.sessionId) {
-        setStatus('yellow', 'Found session, connecting...');
+        setStatus('yellow', 'Setting up — please wait, no action needed…');
         try {
           if (await tryConnect(resp.sessionId)) return;
         } catch (e) { /* no plan in cart */ }
@@ -441,14 +473,14 @@
     // Reset any stale sessionId left over from failed steps 1/2 so createSession
     // sends no authorization header.
     sessionId = null;
-    setStatus('yellow', 'Setting up your session...');
+    setStatus('yellow', 'Setting up — please wait, no action needed…');
     let bootstrapError = null;
     try {
       const sid = await createSession();
       sessionId = sid;
-      setStatus('yellow', 'Adding a SIM plan to cart...');
+      setStatus('yellow', 'Setting up — please wait, no action needed…');
       await setupCart();
-      setStatus('yellow', 'Almost ready...');
+      setStatus('yellow', 'Almost ready — please wait…');
       if (await tryConnect(sid)) return;
       bootstrapError = 'Cart verification returned no plan';
     } catch (e) {
@@ -472,12 +504,6 @@
       statusText.textContent = text;
     }
   }
-
-  // --- Dismiss welcome card ---
-  $('dismissWelcome')?.addEventListener('click', async () => {
-    $('welcomeBox').classList.add('hidden');
-    await chrome.storage.local.set({ welcomeDismissed: true });
-  });
 
   // --- Manual session connect ---
   $('connectBtn').addEventListener('click', async () => {
@@ -617,14 +643,12 @@
   // --- Shared number card renderer ---
   function renderNumberCard(r, opts = {}) {
     const tags = getNumberTags(r.number);
-    const intl = '+61 ' + r.number.slice(1, 4) + ' ' + r.number.slice(4, 7) + ' ' + r.number.slice(7);
     const isFav = favSet.has(r.number);
     return `
       <div class="number-card${opts.top ? ' top-result' : ''}" data-number="${r.number}" title="Click to copy">
         ${opts.top ? '<span class="top-ribbon">TOP SCORE</span>' : ''}
         <div>
           <div class="num">${r.formatted}</div>
-          <div class="num-intl">${intl}</div>
           <div class="tags">
             ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
             ${r.searchTerm ? `<span class="tag search">${r.searchTerm}</span>` : ''}
@@ -667,7 +691,7 @@
     try {
       await navigator.clipboard.writeText(card.dataset.number);
       card.classList.add('copied');
-      setTimeout(() => card.classList.remove('copied'), 900);
+      setTimeout(() => card.classList.remove('copied'), 1600);
     } catch (err) {
       console.warn('Clipboard write failed:', err);
     }
@@ -707,31 +731,56 @@
     const countEl = $('searchesCount');
     const listEl = $('searchesList');
 
-    if (searches.length === 0) {
+    // A running scan shows at the top as an in-progress entry until it finishes
+    // (at which point background.js logs it into `searches`).
+    const liveEntry = (liveScan && liveScan.running) ? {
+      input: liveScan.label || 'Scan',
+      digits: liveScan.searchDigits || null,
+      matches: liveScan.matchedNumbers || [],
+      timestamp: liveScan.startedAt,
+      inProgress: true
+    } : null;
+
+    const entries = liveEntry ? [liveEntry, ...searches] : searches;
+
+    if (entries.length === 0) {
       countEl.textContent = '';
       listEl.innerHTML = '<div class="results-empty">No searches yet. Run a search or scan first.</div>';
       return;
     }
 
-    countEl.textContent = `${searches.length} search${searches.length === 1 ? '' : 'es'} — last ${formatRelativeTime(searches[0].timestamp)}`;
+    countEl.textContent = liveEntry
+      ? `${searches.length} search${searches.length === 1 ? '' : 'es'} — 1 in progress`
+      : `${searches.length} search${searches.length === 1 ? '' : 'es'} — last ${formatRelativeTime(searches[0].timestamp)}`;
 
     const resultsByNumber = new Map(allResults.map(r => [r.number, r]));
 
-    listEl.innerHTML = searches.map((s, idx) => {
+    // Remember which cards are open so a re-render (e.g. after favouriting a
+    // number inside a card, or a live progress update) doesn't collapse them.
+    const expandedIdx = new Set(
+      [...listEl.querySelectorAll('.search-card.expanded')].map(c => c.dataset.idx)
+    );
+
+    listEl.innerHTML = entries.map((s, i) => {
+      // Stable id: the live card keeps "live" so its open state survives updates.
+      const cardId = s.inProgress ? 'live' : String(liveEntry ? i - 1 : i);
       const matchCount = s.matches.length;
       const digitsLabel = s.digits && s.digits !== s.input ? ` <span class="search-digits">${s.digits}</span>` : '';
       const matchesHtml = matchCount === 0
-        ? '<div class="no-matches">No numbers matched this search.</div>'
+        ? `<div class="no-matches">${s.inProgress ? 'Searching… matches will appear here.' : 'No numbers matched this search.'}</div>`
         : s.matches.map(num => resultsByNumber.get(num)).filter(Boolean).map(renderNumberCard).join('');
+      const metaRight = s.inProgress
+        ? '<span class="in-progress">● In progress</span>'
+        : `<span>${formatRelativeTime(s.timestamp)}</span>`;
       return `
-        <div class="search-card" data-idx="${idx}">
+        <div class="search-card${s.inProgress ? ' in-progress-card' : ''}${expandedIdx.has(cardId) ? ' expanded' : ''}" data-idx="${cardId}">
           <div class="search-card-header">
             <div>
               <div class="search-card-title">${s.input}${digitsLabel}</div>
             </div>
             <div class="search-card-meta">
               <span class="match-count${matchCount === 0 ? ' zero' : ''}">${matchCount} match${matchCount === 1 ? '' : 'es'}</span>
-              <span>${formatRelativeTime(s.timestamp)}</span>
+              ${metaRight}
               <span class="search-card-toggle">▸</span>
             </div>
           </div>
@@ -798,13 +847,15 @@
   async function runBulkScan(patterns, searchTerm, searchDigits, label, opts = {}) {
     if (scanning) return;
     if (!planId) { alert('Not ready yet.'); return; }
-    const repeats = opts.repeats ?? ($('deepScan')?.checked ? 3 : 1);
-    const sessions = opts.sessions ?? ($('rotateSessions')?.checked ? 3 : 1);
+    // Deep (3 passes per filter) + 3-session rotation are now the default
+    // method for the widest number coverage.
+    const repeats = opts.repeats ?? 3;
+    const sessions = opts.sessions ?? 3;
     enterScanningUI();
     await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
         type: 'START_SCAN',
-        opts: { patterns, repeats, sessions, label, searchTerm, searchDigits, planId, sessionId }
+        opts: { patterns, repeats, sessions, label, searchTerm, searchDigits, matchRegex: opts.matchRegex || null, planId, sessionId }
       }, resp => {
         if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
         else resolve(resp);
@@ -828,6 +879,9 @@
 
   function applyScanState(s) {
     if (!s) return;
+    liveScan = s;
+    // Keep the in-progress card in Recent Searches current while it's visible.
+    if ($('panel-searches').classList.contains('active')) renderSearches();
     const pct = s.total ? Math.round((s.scanned / s.total) * 100) : 0;
     progressFill.style.width = pct + '%';
     const sessionLabel = s.sessionsTotal > 1 ? `session ${s.sessionsDone || 1}/${s.sessionsTotal} · ` : '';
@@ -835,7 +889,17 @@
     const remaining = Math.max(0, s.total - s.scanned);
     const etaSec = Math.round(remaining * 0.7);
     const eta = etaSec > 60 ? `~${Math.ceil(etaSec / 60)} min left` : etaSec > 5 ? `~${etaSec}s left` : 'finishing...';
-    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${s.found} new · ${eta}`;
+    // For an explicit search, surface how many numbers MATCH the search; for a
+    // pattern preset scan there's no search term, so show how many NEW numbers
+    // were discovered.
+    let hitsLabel;
+    if (s.searchDigits) {
+      const matches = s.matchedNumbers ? s.matchedNumbers.length : 0;
+      hitsLabel = `${matches} match${matches === 1 ? '' : 'es'}`;
+    } else {
+      hitsLabel = `${s.found} new`;
+    }
+    progressText.textContent = `${sessionLabel}${s.scanned}/${s.total}${passLabel} · ${hitsLabel} · ${eta}`;
   }
 
   // Listen for background scan updates
@@ -849,7 +913,15 @@
         applyScanState(next);
       } else if (prev) {
         // scanState was cleared — scan finished
-        const summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+        liveScan = null;
+        let summary;
+        if (prev.searchDigits) {
+          const matches = prev.matchedNumbers ? prev.matchedNumbers.length : 0;
+          const term = prev.searchTerm || prev.searchDigits;
+          summary = `Done! ${matches} match${matches === 1 ? '' : 'es'} for "${term}" across ${prev.scanned} calls.`;
+        } else {
+          summary = `Done! ${prev.found} new numbers across ${prev.scanned} calls.`;
+        }
         exitScanningUI(summary);
         // Refresh results from storage and switch to results tab
         chrome.storage.local.get(['results', 'searches'], data => {
@@ -902,12 +974,13 @@
   });
 
   // AAABBB scan: search 5-char prefix AAABB for each distinct digit pair.
-  // The API caps filters at 5 chars, so AAABB catches everything that could become AAABBB;
-  // the AAABBB tag highlights the true matches in the Results tab.
+  // The API caps filters at 5 chars, so AAABB catches everything that could become AAABBB.
+  // matchRegex narrows the recorded matches to true AAABBB (two triples of different
+  // digits), so the search only shows AAABBB — not the AAABB numbers it had to fetch.
   $('scanTripleTriples').addEventListener('click', () => {
     const pats = [];
     for (let a = 0; a <= 9; a++) for (let b = 0; b <= 9; b++) if (a !== b) pats.push(`${a}${a}${a}${b}${b}`);
-    runBulkScan(pats, null, null, 'AAABBB scan');
+    runBulkScan(pats, null, null, 'AAABBB scan', { matchRegex: '(\\d)\\1\\1(?!\\1)(\\d)\\2\\2' });
   });
 
   // Consecutive ascending/descending sequences (4 and 5 digits long)

@@ -13,7 +13,7 @@ Number Hunter creates its own amaysim browser session, adds a plan to the cart i
    git clone https://github.com/daraghkan/number-hunter.git
    ```
 2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder.
-3. Click the Number Hunter icon -- a welcome card greets you on first run. Once the orange status bar disappears, you're connected and ready.
+3. Click the Number Hunter icon. While it sets itself up, the status bar shows **"Setting up — please wait, no action needed…"**. Once that bar disappears, you're connected and ready.
 
 No amaysim tab or manual setup is needed. If auto-setup ever fails, the extension shows a step-by-step explainer for grabbing a session ID from amaysim.com.au and pasting it in manually.
 
@@ -41,22 +41,22 @@ Run bulk scans across many patterns at once:
 | **Quads** | AAAA for each digit (10 patterns) |
 | **Quints** | AAAAA for each digit (10 patterns) |
 | **All Doubles** | Every AABB combination (90 patterns) |
-| **AAABBB** | Every triple-triple pair like 111222 (90 patterns) |
+| **AAABBB** | Every triple-triple pair like 111222 (90 patterns). The API caps filters at 5 chars, so this fetches via the `AAABB` proxy but only records true `AAABBB` numbers as matches. |
 | **ABAB** | Every alternating pair like 1212, 3434 (90 patterns) |
 | **Mirrors** | Every ABBA palindrome of 4 like 1221, 3443 (90 patterns) |
 | **Sequences** | 4 and 5 digit ascending/descending runs like 1234, 98765 (22 patterns) |
 | **Round 00** | Ends in 100, 200, ..., 900 (9 patterns) |
 
-#### Scan modifiers
+#### Deep + multi-session by default
 
-Two checkboxes sit next to the Pattern Scans heading:
+Every scan now runs the widest-coverage method automatically (no checkboxes to toggle):
 
-- **Deep** -- queries each filter 3 times instead of once. The amaysim API tracks a `flushList` of numbers it has already shown you and rotates fresh ones in, so repeating the same filter yields up to 3x more candidates.
-- **3× sessions** -- after finishing one pass of all patterns, the extension creates a brand-new amaysim session (fresh `sessionId` + cart) and runs the same scan again. Each session has its own number pool, so this surfaces numbers the previous session never had access to. Triples the scan time.
+- **3 passes per filter** -- each filter is queried 3 times. The amaysim API tracks a `flushList` of numbers it has already shown you and rotates fresh ones in, so repeating the same filter yields up to 3x more candidates.
+- **3 rotated sessions** -- after finishing one pass of all patterns, the extension creates a brand-new amaysim session (fresh `sessionId` + cart) and runs the same scan again, three times total. Each session has its own number pool, so this surfaces numbers the previous session never had access to.
 
-Both modifiers stack. The longest run (Full Scan + Deep + 3× sessions) is about 23 minutes; the shortest (one pattern, no modifiers) takes a few seconds.
+Because this is always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
 
-Scans run with a 300ms delay between API calls. A sticky progress bar at the bottom of the panel shows the session count, pass number, new numbers found, and an ETA. The **Stop** button next to it works mid-scan.
+Scans run with a 300ms delay between API calls. A progress bar pinned to the bottom of the popup shows the session count (`session 1/3`), pass number (`pass 1/3`), and an ETA. For an explicit word/number search it shows the running **match count**; for a pattern scan it shows how many **new** numbers were found. The **Stop** button next to it works mid-scan.
 
 #### Scans keep running when the popup closes
 
@@ -64,12 +64,12 @@ The scan loop runs in the background service worker, not in the popup. Click som
 
 ### Searches and Results
 
-- **Recent Searches** -- one entry per search or scan you've run. Click an entry to expand and see only the numbers that actually matched. If nothing matched, it says so. Each entry shows how long ago the search ran.
-- **All Numbers** -- every number found across every search. Sort by score or most recent. Filter by All / ★ Favs / Free / Premium.
+- **Recent Searches** -- one entry per search or scan you've run. Click an entry to expand and see only the numbers that actually matched. If nothing matched, it says so. Each entry shows how long ago the search ran. A scan that's **currently running** appears at the top as a blinking **● In progress** card with a live match count, until it finishes and becomes a normal entry.
+- **All Numbers** -- every number found across every search. Sort by score or most recent. Filter by All / ★ Favs / Free / Premium. A box at the top explains how to actually claim a number you like (copy it, then select it on amaysim's As You Go plan via **Pick a new number**).
 
 Each number card shows:
 
-- **Formatted number** (e.g. `0412 345 678`) and **international format** (`+61 412 345 678`)
+- **Formatted number** (e.g. `0412 345 678`)
 - **Score** based on memorability
 - **Free / $30 premium** badge
 - **Pattern tags** identifying what makes the number memorable (up to 4 tags per card)
@@ -88,7 +88,12 @@ Numbers are automatically classified with up to 4 tags:
 | Quad | 4 same digits | 04x **8888** xx |
 | Triple | 3 same digits | 04x **777** xxx |
 | AABBCCDD | Four consecutive different-digit pairs | **11223344** |
+| AABBBCC | Pair, triple, pair (three distinct digits) | 04 **1122233** x |
+| AAABBCC | Triple, pair, pair (three distinct digits) | 04 **1112233** x |
+| AABBCCC | Pair, pair, triple (three distinct digits) | 04 **1122333** x |
 | AABBCC | Three consecutive different-digit pairs | 04 **112233** xx |
+| AAAABB | Quad followed by a pair | 04x **111122** |
+| AABBBB | Pair followed by a quad | 04x **112222** |
 | AAABBB | Two triples of different digits | 04x **111222** |
 | AAABB | Triple followed by a pair | 04x **11122** x |
 | AABBB | Pair followed by a triple | 04x **11222** x |

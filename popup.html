@@ -25,14 +25,17 @@
     .panel { display: none; padding: 16px; max-height: 400px; overflow-y: auto; }
     .panel.active { display: block; }
 
-    /* Welcome box (first run) */
-    .welcome-box { padding: 10px 12px; background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; margin-bottom: 12px; }
-    .welcome-box.hidden { display: none; }
-    .welcome-box code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-family: 'SF Mono', 'Fira Code', monospace; }
-
     /* Connect box */
     .connect-box { padding: 10px; background: #1a1200; border: 1px solid #ff8c00; border-radius: 6px; font-size: 11px; margin-bottom: 12px; }
     .connect-box.hidden { display: none; }
+
+    /* Claim steps box — how to actually get a found number on amaysim */
+    .claim-box { padding: 10px 12px; background: #141414; border: 1px solid #2a2a2a; border-left: 3px solid #ff8c00; border-radius: 6px; margin-bottom: 12px; font-size: 11px; line-height: 1.6; color: #bbb; }
+    .claim-box strong { color: #ff8c00; }
+    .claim-box ol { margin: 6px 0 0 16px; padding: 0; }
+    .claim-box li { margin-bottom: 2px; }
+    .claim-box a { color: #ff8c00; text-decoration: none; }
+    .claim-box a:hover { text-decoration: underline; }
 
     /* Quick Search */
     .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -62,8 +65,8 @@
     .pattern-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .pattern-grid .preset-btn.full-width { grid-column: 1 / -1; }
 
-    /* Progress */
-    .progress { display: none; margin: 12px 0; position: sticky; bottom: 0; background: #0a0a0a; padding: 6px 0; z-index: 10; }
+    /* Progress — sticky footer pinned to the bottom of the popup */
+    .progress { display: none; position: sticky; bottom: 0; background: #0a0a0a; border-top: 1px solid #222; padding: 8px 16px; z-index: 50; }
     .progress.active { display: block; }
     .progress-bar { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
     .progress-fill { height: 100%; background: #ff8c00; transition: width 0.3s; width: 0%; }
@@ -80,9 +83,8 @@
     .number-card.top-result { border: 1.5px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.15); background: linear-gradient(135deg, #1f1a08, #1a1a1a); }
     .number-card .top-ribbon { position: absolute; top: -7px; left: 10px; font-size: 9px; padding: 1px 6px; background: #ffd700; color: #000; font-weight: 700; border-radius: 3px; letter-spacing: 0.5px; }
     .number-card .num { font-size: 16px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 1px; }
-    .number-card .num-intl { font-size: 10px; color: #555; font-family: 'SF Mono', 'Fira Code', monospace; margin-top: 1px; }
     .number-card.copied { background: #16331a; border-color: #4caf50; }
-    .number-card.copied::after { content: 'Copied'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #4caf50; font-size: 11px; font-weight: 600; background: #0a0a0a; padding: 2px 6px; border-radius: 4px; }
+    .number-card.copied::after { content: 'Copied — pick it on amaysim'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #4caf50; font-size: 11px; font-weight: 600; background: #0a0a0a; padding: 2px 6px; border-radius: 4px; }
     .fav-btn { background: none; border: none; color: #3a3a3a; font-size: 18px; cursor: pointer; padding: 0 6px; line-height: 1; transition: color 0.15s, transform 0.15s; align-self: center; }
     .fav-btn:hover { color: #888; transform: scale(1.15); }
     .fav-btn.active { color: #ffd700; }
@@ -101,6 +103,11 @@
     .tag.triple { background: rgba(255,140,0,0.2); }
     .tag.aaabbb { background: rgba(255,100,0,0.25); color: #ffb266; }
     .tag.aaabb { background: rgba(255,100,0,0.2); color: #ffa366; }
+    .tag.aaaabb { background: rgba(255,100,0,0.28); color: #ffc299; }
+    .tag.aabbbb { background: rgba(255,100,0,0.28); color: #ffc299; }
+    .tag.aabbbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
+    .tag.aaabbcc { background: rgba(255,100,0,0.28); color: #ffb266; }
+    .tag.aabbccc { background: rgba(255,100,0,0.28); color: #ffb266; }
     .tag.aabbb { background: rgba(255,100,0,0.18); color: #ff9952; }
     .tag.aabbccdd { background: rgba(138,99,255,0.3); color: #c4b5fd; }
     .tag.aabbcc { background: rgba(138,99,255,0.22); color: #b8a6fa; }
@@ -117,6 +124,9 @@
     /* Searches tab */
     .searches-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
     .search-card { background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .search-card.in-progress-card { border-color: #ff8c00; background: #1a1408; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .search-card-meta .in-progress { color: #ff8c00; font-weight: 600; animation: blink 1.2s infinite; }
     .search-card-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
     .search-card-title { font-weight: 600; color: #fff; font-size: 13px; }
     .search-card-title .search-digits { color: #888; font-size: 11px; font-weight: 400; margin-left: 6px; }
@@ -173,21 +183,6 @@
 
   <!-- SEARCH TAB -->
   <div class="panel active" id="panel-search">
-    <!-- First-run welcome card -->
-    <div class="welcome-box hidden" id="welcomeBox">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-        <div>
-          <strong style="color:#ff8c00; font-size:12px;">Welcome to Number Hunter</strong>
-          <p style="font-size:11px; color:#bbb; margin-top:4px; line-height:1.5;">
-            Setup is automatic. Once the orange status bar disappears, you're ready.
-            Try a digit pattern (e.g. <code style="color:#ff8c00;">2222</code>) or run a Pattern Scan below.
-            All numbers found appear in the <strong>All Numbers</strong> tab.
-          </p>
-        </div>
-        <button id="dismissWelcome" style="background:none; border:none; color:#666; cursor:pointer; font-size:16px; padding:0; line-height:1;" title="Dismiss">×</button>
-      </div>
-    </div>
-
     <!-- Connect box (shown when auto-setup fails) -->
     <div class="connect-box hidden" id="connectBox">
       <strong style="color:#ff8c00;">Auto-setup didn't work.</strong>
@@ -211,18 +206,8 @@
 
     <button class="scan-btn" id="findBest" style="margin-bottom:10px;">Find Best Number</button>
 
-    <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="section-label">
       <span>Pattern Scans</span>
-      <div style="display:flex; gap:10px; text-transform:none; letter-spacing:0; font-weight:400; font-size:11px; color:#aaa;">
-        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;" title="Run each filter 3 times to get more numbers per session">
-          <input type="checkbox" id="deepScan" style="accent-color:#ff8c00; cursor:pointer;">
-          Deep
-        </label>
-        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;" title="Rotate through 3 fresh sessions for wider number coverage (3× longer)">
-          <input type="checkbox" id="rotateSessions" style="accent-color:#ff8c00; cursor:pointer;">
-          3× sessions
-        </label>
-      </div>
     </div>
     <div class="pattern-grid">
       <button class="preset-btn" id="scanAAA"><span class="label">Triples</span><span class="desc">AAA (e.g. 333)</span></button>
@@ -234,14 +219,6 @@
       <button class="preset-btn" id="scanMirrors"><span class="label">Mirrors</span><span class="desc">ABBA (e.g. 1221)</span></button>
       <button class="preset-btn" id="scanSequences"><span class="label">Sequences</span><span class="desc">4 &amp; 5 digit runs</span></button>
       <button class="preset-btn" id="scanRoundHundreds"><span class="label">Round 00</span><span class="desc">Ends in 100, 200, ...</span></button>
-    </div>
-
-    <div class="progress" id="scanProgress">
-      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-row">
-        <div class="progress-text" id="progressText">Scanning...</div>
-        <button id="stopScan" class="stop-btn-inline">Stop</button>
-      </div>
     </div>
 
     <div id="searchResults"></div>
@@ -260,6 +237,14 @@
 
   <!-- RESULTS TAB -->
   <div class="panel" id="panel-results">
+    <div class="claim-box">
+      <strong>Found a number you like?</strong> This tool only finds available numbers — to actually get one:
+      <ol>
+        <li>Tap a number below to <strong>copy</strong> it.</li>
+        <li>Go to <a href="https://www.amaysim.com.au/sim-plans/28-day-sim-plans/as-you-go" target="_blank">amaysim's As You Go plan</a> and select <strong>Buy now</strong>.</li>
+        <li>Scroll to <strong>Pick a new number</strong> and search for your copied number to select it.</li>
+      </ol>
+    </div>
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All</button>
       <button class="filter-btn" data-filter="favourites">★ Favs</button>
@@ -293,6 +278,15 @@
         <button class="scan-btn secondary" id="viewHistory" style="margin-top:4px">View Full History</button>
         <button class="refresh-btn" id="clearHistory" style="margin-top:8px; border-color:#888; color:#888">Clear All History</button>
       </div>
+    </div>
+  </div>
+
+  <!-- SCAN PROGRESS — pinned to the bottom of the popup across all tabs -->
+  <div class="progress" id="scanProgress">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-row">
+      <div class="progress-text" id="progressText">Scanning...</div>
+      <button id="stopScan" class="stop-btn-inline">Stop</button>
     </div>
   </div>
 
