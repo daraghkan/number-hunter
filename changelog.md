@@ -1,0 +1,5 @@
+| Summary | Instructions & Context | Urgency | Effort | Impact | Risk | Completed |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| Audit fixes, v3.4.0 (PR #8) | Stuck scans on a failed save, borrowing an open amaysim tab's cart, silent request failures, empty Recent Searches cards, missed ABAB/Mirror/AABB tags, unescaped HTML. Removed unused files and the `tabs`/`scripting` permissions. Tested in Chrome with a Triples scan. | 6 | 4 | 7 | 3 | 2026-10-18 18:55 |
+| Version label, GitHub link and update banner (PR #7) | The popup fetches `manifest.json` from main and shows "Update available" when a newer version is published. | 3 | 2 | 4 | 2 | 2026-10-18 18:30 |
+| Remove Cuttable links | Removed `claude.ai/code/session` links from the descriptions of PRs #1, #2 and #4–#8. Turned the Cuttable work-sync hook off locally (`.claude/settings.local.json`, excluded from git). Session links in main's older commit messages were left in place by choice. | 5 | 2 | 4 | 1 | 2026-10-18 19:05 |
