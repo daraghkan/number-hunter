@@ -31,27 +31,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  // Get session from amaysim page using file-based injection (no eval)
-  if (msg.type === 'GET_PAGE_SESSION') {
-    chrome.tabs.query({ url: 'https://www.amaysim.com.au/*' }, (foundTabs) => {
-      if (!foundTabs || !foundTabs.length) {
-        sendResponse({ error: 'No amaysim tab open' });
-        return;
-      }
-      chrome.scripting.executeScript({
-        target: { tabId: foundTabs[0].id },
-        world: 'MAIN',
-        files: ['get-session.js']
-      }).then(results => {
-        const sid = results?.[0]?.result;
-        sendResponse({ sessionId: sid });
-      }).catch(err => {
-        sendResponse({ error: err.message });
-      });
-    });
-    return true;
-  }
-
   // Start a scan in the background
   if (msg.type === 'START_SCAN') {
     startScan(msg.opts).then(() => sendResponse({ ok: true }));
@@ -62,12 +41,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'STOP_SCAN') {
     if (scanState) scanState.stopRequested = true;
     sendResponse({ ok: true });
-    return;
-  }
-
-  // Get current scan state (for popup resume)
-  if (msg.type === 'GET_SCAN_STATE') {
-    sendResponse({ scanState });
     return;
   }
 });
@@ -93,6 +66,8 @@ async function startScan(opts) {
     idx: 0,
     repIdx: 0,
     scanned: 0,
+    failed: 0,
+    error: null,
     found: 0,
     total: (opts.patterns?.length || 0) * (opts.repeats || 1) * sessions,
     matchedNumbers: [],
@@ -107,7 +82,33 @@ function scheduleStep(delay) {
   scanTimerId = setTimeout(scanStep, delay);
 }
 
+// Any unexpected failure (most likely a storage write) ends the scan with an
+// error instead of leaving it marked running with no step scheduled, which
+// used to freeze the popup in scanning mode with every button disabled.
 async function scanStep() {
+  try {
+    await runScanStep();
+  } catch (e) {
+    console.warn('[Number Hunter] Scan step failed, stopping:', e);
+    await abortScan(e.message || String(e));
+  }
+}
+
+async function abortScan(message) {
+  if (!scanState) return;
+  scanState.error = message;
+  try {
+    await finalizeScan();
+  } catch (e) {
+    // finalizeScan writes to storage too. If that is what's failing, still
+    // clear the running state so the popup unlocks.
+    console.warn('[Number Hunter] finalizeScan failed:', e);
+    scanState = null;
+    await chrome.storage.local.remove('scanState').catch(() => {});
+  }
+}
+
+async function runScanStep() {
   if (!scanState) return;
   if (scanState.stopRequested) {
     await finalizeScan();
@@ -128,6 +129,7 @@ async function scanStep() {
         return;
       } catch (e) {
         console.warn('[Number Hunter] Session rotation failed, finalizing:', e);
+        scanState.error = `couldn't start session ${scanState.sessionsDone + 1} of ${scanState.sessionsTotal} (${e.message})`;
         await finalizeScan();
         return;
       }
@@ -137,8 +139,10 @@ async function scanStep() {
   }
 
   const pat = scanState.patterns[scanState.idx];
-  try {
-    const nums = await fetchNumbers(pat, scanState.planId, scanState.sessionId);
+  const nums = await fetchNumbers(pat, scanState.planId, scanState.sessionId);
+  if (nums === null) {
+    scanState.failed++;
+  } else {
     if (scanState.searchTerm && scanState.searchDigits) {
       nums.forEach(n => { if (n.number.includes(scanState.searchDigits)) n.searchTerm = scanState.searchTerm; });
     }
@@ -160,8 +164,6 @@ async function scanStep() {
     });
     const added = await mergeResults(nums);
     scanState.found += added;
-  } catch (e) {
-    // skip errors silently — backend sometimes 500s on certain filters
   }
 
   scanState.scanned++;
@@ -246,6 +248,7 @@ async function fetchNumbers(filter, planId, sessionId) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 400 + attempt * 200));
     try {
       const resp = await fetch(GRAPHQL_URL, { method: 'POST', headers, body });
+      if (!resp.ok) { lastErr = `HTTP ${resp.status}`; continue; }
       const data = await resp.json();
       if (data?.errors) { lastErr = data.errors[0]?.message; continue; }
       return (data?.data?.updatePhoneNumbers?.items || [])
@@ -253,8 +256,9 @@ async function fetchNumbers(filter, planId, sessionId) {
         .map(n => ({ ...n, filter }));
     } catch (e) { lastErr = e.message; }
   }
+  // null (not []) so the scan can count failures separately from empty results.
   console.warn('[Number Hunter] fetchNumbers gave up:', filter, lastErr);
-  return [];
+  return null;
 }
 
 async function mergeResults(numbers) {
@@ -301,7 +305,7 @@ function formatNum(raw) {
   return raw.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
 }
 
-// Scoring — kept in sync with popup.js
+// Scoring. The popup shows the score stored here and doesn't recompute it.
 function scoreNumber(num) {
   let score = 0;
   const d = num.slice(2);
@@ -313,12 +317,11 @@ function scoreNumber(num) {
     if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) score += 10;
     if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) score += 10;
   }
-  const abcabc = d.match(/(\d)(\d)(\d)\1\2\3/);
-  if (abcabc && new Set([abcabc[1], abcabc[2], abcabc[3]]).size === 3) score += 25;
-  const abab = d.match(/(\d)(\d)\1\2/);
-  if (abab && abab[1] !== abab[2]) score += 8;
-  const mirror = d.match(/(\d)(\d)\2\1/);
-  if (mirror && mirror[1] !== mirror[2]) score += 8;
+  // Lookaheads require distinct digits within the match itself, so an earlier
+  // same-digit run (e.g. the "0000" in "00001212") can't hide a later pattern.
+  if (/(\d)(?!\1)(\d)(?!\1|\2)(\d)\1\2\3/.test(d)) score += 25;
+  if (/(\d)(?!\1)(\d)\1\2/.test(d)) score += 8;
+  if (/(\d)(?!\1)(\d)\2\1/.test(d)) score += 8;
   const counts = {};
   for (const ch of d) counts[ch] = (counts[ch] || 0) + 1;
   for (const c of Object.values(counts)) if (c >= 4) score += (c - 3) * 8;

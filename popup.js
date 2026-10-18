@@ -113,75 +113,64 @@
   }
 
   // --- Pattern detection helpers ---
+  // Each regex uses negative lookaheads to require distinct digits inside the
+  // match itself. Checking distinctness after the fact only sees the FIRST
+  // match, so "00001212" would miss its ABAB because "0000" matched first.
   // AABBCCDD: 4 consecutive pairs with 4 distinct digits (e.g. 11223344)
   function hasAABBCCDD(d) {
-    const m = d.match(/(\d)\1(\d)\2(\d)\3(\d)\4/);
-    return !!m && new Set([m[1], m[2], m[3], m[4]]).size === 4;
+    return /(\d)\1(?!\1)(\d)\2(?!\1|\2)(\d)\3(?!\1|\2|\3)(\d)\4/.test(d);
   }
   // AABBCC: 3 consecutive pairs with 3 distinct digits (e.g. 112233)
   function hasAABBCC(d) {
-    const m = d.match(/(\d)\1(\d)\2(\d)\3/);
-    return !!m && m[1] !== m[2] && m[2] !== m[3] && m[1] !== m[3];
+    return /(\d)\1(?!\1)(\d)\2(?!\1|\2)(\d)\3/.test(d);
   }
   // AAABBB: two triples of different digits (e.g. 111222)
   function hasAAABBB(d) {
-    const m = d.match(/(\d)\1\1(\d)\2\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1\1(?!\1)(\d)\2\2/.test(d);
   }
   // AAABB: triple then pair of different digits (e.g. 11122)
   function hasAAABB(d) {
-    const m = d.match(/(\d)\1\1(\d)\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1\1(?!\1)(\d)\2/.test(d);
   }
   // AABBB: pair then triple of different digits (e.g. 11222)
   function hasAABBB(d) {
-    const m = d.match(/(\d)\1(\d)\2\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1(?!\1)(\d)\2\2/.test(d);
   }
   // AAAABB: quad then pair of different digits (e.g. 111122)
   function hasAAAABB(d) {
-    const m = d.match(/(\d)\1\1\1(\d)\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1\1\1(?!\1)(\d)\2/.test(d);
   }
   // AABBBB: pair then quad of different digits (e.g. 112222)
   function hasAABBBB(d) {
-    const m = d.match(/(\d)\1(\d)\2\2\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1(?!\1)(\d)\2\2\2/.test(d);
   }
   // AABBBCC: pair, triple, pair with 3 distinct digits (e.g. 1122233)
   function hasAABBBCC(d) {
-    const m = d.match(/(\d)\1(\d)\2\2(\d)\3/);
-    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+    return /(\d)\1(?!\1)(\d)\2\2(?!\1|\2)(\d)\3/.test(d);
   }
   // AAABBCC: triple, pair, pair with 3 distinct digits (e.g. 1112233)
   function hasAAABBCC(d) {
-    const m = d.match(/(\d)\1\1(\d)\2(\d)\3/);
-    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+    return /(\d)\1\1(?!\1)(\d)\2(?!\1|\2)(\d)\3/.test(d);
   }
   // AABBCCC: pair, pair, triple with 3 distinct digits (e.g. 1122333)
   function hasAABBCCC(d) {
-    const m = d.match(/(\d)\1(\d)\2(\d)\3\3/);
-    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+    return /(\d)\1(?!\1)(\d)\2(?!\1|\2)(\d)\3\3/.test(d);
   }
   // AABB: a pair followed by a different pair (e.g. 1122)
   function hasAABB(d) {
-    const m = d.match(/(\d)\1(\d)\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)\1(?!\1)(\d)\2/.test(d);
   }
   // ABAB: alternating two distinct digits (e.g. 1212)
   function hasABAB(d) {
-    const m = d.match(/(\d)(\d)\1\2/);
-    return !!m && m[1] !== m[2];
+    return /(\d)(?!\1)(\d)\1\2/.test(d);
   }
   // Mirror (ABBA): 4-char palindrome of two distinct digits (e.g. 1221)
   function hasMirror(d) {
-    const m = d.match(/(\d)(\d)\2\1/);
-    return !!m && m[1] !== m[2];
+    return /(\d)(?!\1)(\d)\2\1/.test(d);
   }
   // ABCABC: a 3-digit block repeated, with the three digits all distinct (e.g. 123123)
   function hasABCABC(d) {
-    const m = d.match(/(\d)(\d)(\d)\1\2\3/);
-    return !!m && new Set([m[1], m[2], m[3]]).size === 3;
+    return /(\d)(?!\1)(\d)(?!\1|\2)(\d)\1\2\3/.test(d);
   }
   // Dominant digit: any single digit appearing 4+ times anywhere in d
   function dominantDigit(d) {
@@ -314,34 +303,6 @@
     return tags.slice(0, 4);
   }
 
-  function tagsHtml(tags) {
-    if (!tags || tags.length === 0) return '';
-    return `<div class="tags">${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}</div>`;
-  }
-
-  // --- Scoring ---
-  function scoreNumber(num) {
-    let score = 0;
-    const d = num.slice(2);
-    const repeats = d.match(/(\d)\1{2,}/g);
-    if (repeats) repeats.forEach(r => score += r.length * 15);
-    const pairs = d.match(/(\d)\1/g);
-    if (pairs) score += pairs.length * 5;
-    for (let i = 0; i < d.length - 2; i++) {
-      if (+d[i+1] === +d[i]+1 && +d[i+2] === +d[i]+2) score += 10;
-      if (+d[i+1] === +d[i]-1 && +d[i+2] === +d[i]-2) score += 10;
-    }
-    if (hasABCABC(d)) score += 25;
-    if (hasABAB(d)) score += 8;
-    if (hasMirror(d)) score += 8;
-    const dom = dominantDigit(d);
-    if (dom) score += (dom.count - 3) * 8;
-    if (d.endsWith('0000')) score += 30;
-    else if (d.endsWith('000')) score += 15;
-    else if (/[1-9]00$/.test(d)) score += 8;
-    return score;
-  }
-
   // --- Create a fresh session ---
   // Must be called with sessionId == null so apiCall sends no authorization header.
   async function createSession() {
@@ -395,32 +356,16 @@
     );
   }
 
-  // --- Query numbers ---
-  async function queryNumbers(filter) {
-    const query = `mutation updatePhoneNumbers($planId: ID!, $cartItemPlanIndex: Int!, $filter: String, $count: Int!) {
-      updatePhoneNumbers(planId: $planId, cartItemPlanIndex: $cartItemPlanIndex, filter: $filter, count: $count) {
-        items { ... on MobilePlanCartItem { numbers { reservedNumbers { number isPremium cost } } } }
-      }
-    }`;
-    const data = await apiCall({
-      query,
-      variables: { planId, cartItemPlanIndex: 0, filter, count: 10 },
-      operationName: 'updatePhoneNumbers'
-    });
-    if (data?.errors) return [];
-    return (data?.data?.updatePhoneNumbers?.items || [])
-      .flatMap(i => (i.numbers || []).flatMap(n => n.reservedNumbers || []))
-      .map(n => ({ ...n, filter }));
-  }
-
   // --- Try to connect with a session ID ---
-  async function tryConnect(sid) {
+  // `source` records where the session came from: 'own' (created by the
+  // extension) or 'manual' (pasted by the user). Only those are reused later.
+  async function tryConnect(sid, source) {
     sessionId = sid;
     const cartData = await apiCall({ query: '{ cart { items { ... on MobilePlanCartItem { plan { id name } } } } }' });
     const plan = cartData?.data?.cart?.items?.[0]?.plan;
     if (plan?.id) {
       planId = plan.id;
-      await chrome.storage.local.set({ sessionId: sid, planId });
+      await chrome.storage.local.set({ sessionId: sid, planId, sessionSource: source });
       setStatus('green', '');
       planInfo.textContent = '';
       connectBox.classList.add('hidden');
@@ -440,7 +385,7 @@
     setStatus('yellow', 'Setting up — please wait, no action needed…');
 
     // Load history
-    const saved = await chrome.storage.local.get(['sessionId', 'planId', 'results', 'historyLog', 'sessionCount', 'searches', 'scanState', 'favourites']);
+    const saved = await chrome.storage.local.get(['sessionId', 'sessionSource', 'planId', 'results', 'historyLog', 'sessionCount', 'searches', 'scanState', 'favourites']);
     if (saved.historyLog) { historyLog = saved.historyLog; $('totalLogged').textContent = historyLog.length; }
     if (saved.sessionCount) $('totalSessions').textContent = saved.sessionCount;
     if (saved.results) { allResults = saved.results; $('totalFound').textContent = allResults.length; }
@@ -453,36 +398,17 @@
       applyScanState(saved.scanState);
     }
 
-    // 1. Try saved session
-    if (saved.sessionId) {
-      setStatus('yellow', 'Setting up — please wait, no action needed…');
+    // 1. Try saved session. Sessions saved before v3.4 have no sessionSource
+    // and may be borrowed from an open amaysim tab, whose real cart scans
+    // would overwrite, so those are dropped in favour of a fresh one.
+    if (saved.sessionId && saved.sessionSource) {
       try {
-        if (await tryConnect(saved.sessionId)) return;
+        if (await tryConnect(saved.sessionId, saved.sessionSource)) return;
       } catch (e) { /* expired */ }
     }
 
-    // 2. Try auto-detect from amaysim page
-    setStatus('yellow', 'Setting up — please wait, no action needed…');
-    try {
-      const resp = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: 'GET_PAGE_SESSION' }, r => {
-          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-          else if (r?.error) reject(new Error(r.error));
-          else resolve(r);
-        });
-      });
-      if (resp.sessionId) {
-        setStatus('yellow', 'Setting up — please wait, no action needed…');
-        try {
-          if (await tryConnect(resp.sessionId)) return;
-        } catch (e) { /* no plan in cart */ }
-      }
-    } catch (e) {
-      // No amaysim tab or injection failed
-    }
-
-    // 3. Auto-bootstrap a fresh session + cart via the API (no amaysim tab needed)
-    // Reset any stale sessionId left over from failed steps 1/2 so createSession
+    // 2. Auto-bootstrap a fresh session + cart via the API (no amaysim tab needed)
+    // Reset any stale sessionId left over from step 1 so createSession
     // sends no authorization header.
     sessionId = null;
     setStatus('yellow', 'Setting up — please wait, no action needed…');
@@ -493,14 +419,14 @@
       setStatus('yellow', 'Setting up — please wait, no action needed…');
       await setupCart();
       setStatus('yellow', 'Almost ready — please wait…');
-      if (await tryConnect(sid)) return;
+      if (await tryConnect(sid, 'own')) return;
       bootstrapError = 'Cart verification returned no plan';
     } catch (e) {
       bootstrapError = e.message;
       console.warn('[Number Hunter] Auto-bootstrap failed:', e);
     }
 
-    // 4. Manual connect (only if everything else failed). Surface the real reason.
+    // 3. Manual connect (only if everything else failed). Surface the real reason.
     showConnectBox();
     if (bootstrapError) {
       planInfo.textContent = `Auto-setup failed: ${bootstrapError}`;
@@ -525,7 +451,7 @@
       return;
     }
     sessionId = sid;
-    await chrome.storage.local.set({ sessionId: sid });
+    await chrome.storage.local.set({ sessionId: sid, sessionSource: 'manual' });
     setStatus('yellow', 'Checking cart...');
 
     try {
@@ -546,66 +472,6 @@
       planInfo.textContent = e.message;
     }
   });
-
-  function formatNum(raw) {
-    return raw.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
-  }
-
-  // --- Persistent history ---
-  async function addToHistory(numbers) {
-    const seen = new Set(historyLog.map(r => r.number));
-    let added = 0;
-    for (const n of numbers) {
-      if (!seen.has(n.number)) {
-        seen.add(n.number);
-        historyLog.push({
-          number: n.number,
-          formatted: formatNum(n.number),
-          isPremium: n.isPremium,
-          cost: n.cost || 0,
-          score: scoreNumber(n.number),
-          filter: n.filter,
-          searchTerm: n.searchTerm || null,
-          foundAt: Date.now(),
-          session: sessionId?.slice(0, 8) || 'unknown'
-        });
-        added++;
-      }
-    }
-    if (added > 0) {
-      historyLog.sort((a, b) => b.score - a.score);
-      await chrome.storage.local.set({ historyLog });
-      $('totalLogged').textContent = historyLog.length;
-    }
-    return added;
-  }
-
-  // --- Add results (dedup) ---
-  function addResults(numbers) {
-    const seen = new Set(allResults.map(r => r.number));
-    let added = 0;
-    for (const n of numbers) {
-      if (!seen.has(n.number)) {
-        seen.add(n.number);
-        allResults.push({
-          number: n.number,
-          formatted: formatNum(n.number),
-          isPremium: n.isPremium,
-          cost: n.cost || 0,
-          score: scoreNumber(n.number),
-          filter: n.filter,
-          searchTerm: n.searchTerm || null,
-          foundAt: Date.now()
-        });
-        added++;
-      }
-    }
-    allResults.sort((a, b) => b.score - a.score);
-    chrome.storage.local.set({ results: allResults });
-    $('totalFound').textContent = allResults.length;
-    addToHistory(numbers);
-    return added;
-  }
 
   // --- Sort control ---
   $('sortSelect').addEventListener('change', (e) => {
@@ -652,21 +518,25 @@
     renderResults();
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+  }
+
   // --- Shared number card renderer ---
   function renderNumberCard(r, opts = {}) {
     const tags = getNumberTags(r.number);
     const isFav = favSet.has(r.number);
     return `
-      <div class="number-card${opts.top ? ' top-result' : ''}" data-number="${r.number}" title="Click to copy">
+      <div class="number-card${opts.top ? ' top-result' : ''}" data-number="${escapeHtml(r.number)}" title="Click to copy">
         ${opts.top ? '<span class="top-ribbon">TOP SCORE</span>' : ''}
         <div>
-          <div class="num">${r.formatted}</div>
+          <div class="num">${escapeHtml(r.formatted)}</div>
           <div class="tags">
             ${tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('')}
-            ${r.searchTerm ? `<span class="tag search">${r.searchTerm}</span>` : ''}
+            ${r.searchTerm ? `<span class="tag search">${escapeHtml(r.searchTerm)}</span>` : ''}
           </div>
         </div>
-        <button class="fav-btn${isFav ? ' active' : ''}" data-fav="${r.number}" title="${isFav ? 'Remove from favourites' : 'Save to favourites'}" aria-pressed="${isFav}">${isFav ? '★' : '☆'}</button>
+        <button class="fav-btn${isFav ? ' active' : ''}" data-fav="${escapeHtml(r.number)}" title="${isFav ? 'Remove from favourites' : 'Save to favourites'}" aria-pressed="${isFav}">${isFav ? '★' : '☆'}</button>
         <div class="meta">
           <div class="score">score ${r.score}</div>
           <span class="badge ${r.isPremium ? 'premium' : 'free'}">${r.isPremium ? '$30' : 'FREE'}</span>
@@ -709,13 +579,7 @@
     }
   });
 
-  // --- Search logging and rendering ---
-  async function logSearch(entry) {
-    searches.unshift(entry);
-    if (searches.length > 200) searches = searches.slice(0, 200);
-    await chrome.storage.local.set({ searches });
-  }
-
+  // --- Search rendering ---
   function formatFoundAt(ts) {
     const d = new Date(ts);
     const now = new Date();
@@ -765,7 +629,11 @@
       ? `${searches.length} search${searches.length === 1 ? '' : 'es'} — 1 in progress`
       : `${searches.length} search${searches.length === 1 ? '' : 'es'} — last ${formatRelativeTime(searches[0].timestamp)}`;
 
-    const resultsByNumber = new Map(allResults.map(r => [r.number, r]));
+    // Look matches up in all-time history and favourites too, not just the
+    // current list, so a "New Session" doesn't leave search cards empty.
+    const resultsByNumber = new Map(
+      [...historyLog, ...favourites, ...allResults].map(r => [r.number, r])
+    );
 
     // Remember which cards are open so a re-render (e.g. after favouriting a
     // number inside a card, or a live progress update) doesn't collapse them.
@@ -777,7 +645,7 @@
       // Stable id: the live card keeps "live" so its open state survives updates.
       const cardId = s.inProgress ? 'live' : String(liveEntry ? i - 1 : i);
       const matchCount = s.matches.length;
-      const digitsLabel = s.digits && s.digits !== s.input ? ` <span class="search-digits">${s.digits}</span>` : '';
+      const digitsLabel = s.digits && s.digits !== s.input ? ` <span class="search-digits">${escapeHtml(s.digits)}</span>` : '';
       const matchesHtml = matchCount === 0
         ? `<div class="no-matches">${s.inProgress ? 'Searching… matches will appear here.' : 'No numbers matched this search.'}</div>`
         : s.matches.map(num => resultsByNumber.get(num)).filter(Boolean).map(renderNumberCard).join('');
@@ -788,7 +656,7 @@
         <div class="search-card${s.inProgress ? ' in-progress-card' : ''}${expandedIdx.has(cardId) ? ' expanded' : ''}" data-idx="${cardId}">
           <div class="search-card-header">
             <div>
-              <div class="search-card-title">${s.input}${digitsLabel}</div>
+              <div class="search-card-title">${escapeHtml(s.input)}${digitsLabel}</div>
             </div>
             <div class="search-card-meta">
               <span class="match-count${matchCount === 0 ? ' zero' : ''}">${matchCount} match${matchCount === 1 ? '' : 'es'}</span>
@@ -931,8 +799,19 @@
         liveScan = null;
         const newCount = prev.found || 0;
         const newLabel = `${newCount} new number${newCount === 1 ? '' : 's'} found`;
+        const failed = prev.failed || 0;
+        const allFailed = prev.scanned > 0 && failed === prev.scanned;
         let summary;
-        if (prev.searchDigits) {
+        // A normal finish saves running:false before clearing. If the last
+        // saved state is still running, background.js couldn't save anything
+        // (most likely storage is full) and cleared it to unlock the popup.
+        if (prev.running) {
+          summary = `Scan stopped: Chrome couldn't save results${newCount ? ` · ${newLabel} before it stopped.` : '.'}`;
+        } else if (prev.error) {
+          summary = `Scan stopped: ${prev.error}${newCount ? ` · ${newLabel}.` : ''}`;
+        } else if (allFailed) {
+          summary = 'Scan failed: amaysim didn\'t answer any request. Try New Session, or try again later.';
+        } else if (prev.searchDigits) {
           const matches = prev.matchedNumbers ? prev.matchedNumbers.length : 0;
           const term = prev.searchTerm || prev.searchDigits;
           const matchLabel = matches === 0
@@ -942,12 +821,16 @@
         } else {
           summary = `Done! ${newLabel}.`;
         }
+        if (failed && !allFailed && !prev.error && !prev.running) {
+          summary += ` ${failed} of ${prev.scanned} requests failed.`;
+        }
         exitScanningUI(summary);
         // Refresh results from storage and switch to results tab
         chrome.storage.local.get(['results', 'searches'], data => {
           if (data.results) { allResults = data.results; $('totalFound').textContent = allResults.length; renderResults(); }
           if (data.searches) { searches = data.searches; renderSearches(); }
-          switchToResults();
+          // Leave the error in view rather than jumping away from it.
+          if (!prev.running && !prev.error && !allFailed) switchToResults();
         });
       }
     }
@@ -1143,11 +1026,13 @@
   });
 
   $('clearHistory').addEventListener('click', async () => {
-    if (confirm('Delete ALL saved number history? This cannot be undone.')) {
-      historyLog = []; allResults = [];
-      await chrome.storage.local.set({ historyLog: [], results: [], sessionCount: 0 });
+    // Recent Searches goes too: its matches point at the numbers being deleted.
+    if (confirm('Delete ALL saved number history and recent searches? Favourites are kept. This cannot be undone.')) {
+      historyLog = []; allResults = []; searches = [];
+      await chrome.storage.local.set({ historyLog: [], results: [], searches: [], sessionCount: 0 });
       $('totalLogged').textContent = '0'; $('totalSessions').textContent = '0'; $('totalFound').textContent = '0';
       renderResults();
+      renderSearches();
     }
   });
 
@@ -1158,7 +1043,7 @@
         const saved = await chrome.storage.local.get('sessionCount');
         const newCount = (saved.sessionCount || 0) + 1;
         allResults = [];
-        await chrome.storage.local.set({ sessionCount: newCount, results: [], sessionId: null, planId: null });
+        await chrome.storage.local.set({ sessionCount: newCount, results: [], sessionId: null, sessionSource: null, planId: null });
         $('totalSessions').textContent = newCount;
         $('totalFound').textContent = '0';
         sessionId = null; planId = null;

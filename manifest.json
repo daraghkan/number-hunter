@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Amaysim Number Hunter",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Find memorable phone numbers on amaysim.com.au",
-  "permissions": ["storage", "scripting", "tabs", "clipboardWrite"],
+  "permissions": ["storage", "unlimitedStorage", "clipboardWrite"],
   "host_permissions": [
     "https://api.amaysim.com.au/*",
     "https://www.amaysim.com.au/*",

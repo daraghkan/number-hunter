@@ -15,7 +15,7 @@ Number Hunter creates its own amaysim browser session, adds a plan to the cart i
 2. Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the repo folder.
 3. Click the Number Hunter icon. While it sets itself up, the status bar shows **"Setting up — please wait, no action needed…"**. Once that bar disappears, you're connected and ready.
 
-No amaysim tab or manual setup is needed. If auto-setup ever fails, the extension shows a step-by-step explainer for grabbing a session ID from amaysim.com.au and pasting it in manually.
+No amaysim tab or manual setup is needed. The extension always uses its own session, never the one in an amaysim tab you have open, so scans can't change the number reserved in a real checkout. If auto-setup ever fails, the extension shows a step-by-step explainer for grabbing a session ID from amaysim.com.au and pasting it in manually. Scans then use that session's cart.
 
 ### Staying up to date
 
@@ -66,7 +66,7 @@ Every scan runs the widest-coverage method automatically (there are no toggles):
 
 Because both are always on, scans take longer than a single pass — roughly 9x — but find far more numbers.
 
-Scans run with a 300ms delay between API calls. A progress bar pinned to the bottom of the popup shows the session count (`session 1/3`), pass number (`pass 1/3`), and an ETA. For an explicit word/number search it shows the running **match count**; for a pattern scan it shows how many **new** numbers were found. The **Stop** button next to it works mid-scan.
+Scans run with a 300ms delay between API calls. A progress bar pinned to the bottom of the popup shows an ETA. For an explicit word/number search it shows the running **match count**; for a pattern scan it shows how many **new** numbers were found. The **Stop** button next to it works mid-scan. When the scan ends, the summary says how many requests failed, if any, and says plainly when every request failed (usually an expired session or amaysim being down) rather than reporting 0 numbers found.
 
 #### Scans keep running when the popup closes
 
@@ -132,7 +132,7 @@ The **More actions** menu in the All Numbers tab keeps less-used controls tucked
 - **View Full History** -- see every number ever found across all sessions
 - **Clear All History** -- delete everything (favourites are preserved)
 
-The **New Session (Fresh Numbers)** button sits in this actions area too, at the bottom of the All Numbers tab (scroll past the results list to reach it). It starts a fresh amaysim session to pull from a different number pool. This **clears the current All Numbers list**, but your all-time history is preserved — every number is still in **View Full History** (and favourites are kept). Note: if you have an amaysim tab open, setup may reconnect to that tab's existing session rather than a brand-new pool.
+The **New Session (Fresh Numbers)** button sits in this actions area too, at the bottom of the All Numbers tab (scroll past the results list to reach it). It starts a fresh amaysim session to pull from a different number pool. This **clears the current All Numbers list**, but your all-time history is preserved — every number is still in **View Full History** (and favourites are kept).
 
 ## Architecture
 
@@ -141,13 +141,9 @@ popup.html / popup.js   -- Extension popup UI and interactions
 background.js           -- Service worker. Runs the scan loop, owns scan state,
                            bootstraps fresh sessions for rotation, persists results
                            to chrome.storage.local
-content.js              -- Content script relaying messages to page bridge
-page-bridge.js          -- Runs in page context to access amaysim sessionStorage
-get-session.js          -- Injected by background to extract session ID from an open
-                           amaysim tab (used by manual fallback path)
 ```
 
-The extension uses Chrome's Manifest V3, `chrome.storage.local` for persistence (results, history, favourites, scan state), and communicates with the amaysim GraphQL API at `https://api.amaysim.com.au/mobile/graphql`. Scan state is persisted on every step so a service-worker recycle resumes cleanly.
+The extension uses Chrome's Manifest V3, `chrome.storage.local` for persistence (results, history, favourites, scan state), and communicates with the amaysim GraphQL API at `https://api.amaysim.com.au/mobile/graphql`. Scan state is persisted on every step so a service-worker recycle resumes cleanly. The `unlimitedStorage` permission lifts Chrome's default 10 MB cap, since a single Find Best Number run can return tens of thousands of numbers. If a scan still can't save, it stops and says why rather than hanging.
 
 ## License
 
